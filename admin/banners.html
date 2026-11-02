@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Banners – PHARMAcare Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+
+  <div id="navbar-placeholder"></div>
+
+  <div class="dashboard-page">
+    <aside class="sidebar admin-sidebar">
+      <div class="sidebar-brand">
+        <p>Admin Control</p>
+        <h3>PHARMAcare</h3>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="/admin/dashboard.html"><i class="fas fa-gauge"></i> Dashboard</a>
+        <a href="/admin/sellers.html"><i class="fas fa-store"></i> Sellers</a>
+        <a href="/admin/users.html"><i class="fas fa-users"></i> Users</a>
+        <a href="/admin/products.html"><i class="fas fa-boxes-stacked"></i> Products</a>
+        <a href="/admin/orders.html"><i class="fas fa-bag-shopping"></i> Orders</a>
+        <a href="/admin/categories.html"><i class="fas fa-list"></i> Categories</a>
+        <a href="/admin/banners.html" class="active"><i class="fas fa-images"></i> Banners</a>
+        <a href="/admin/messages.html"><i class="fas fa-envelope"></i> Messages</a>
+      </nav>
+      <div class="sidebar-footer">
+        <a href="/index.html"><i class="fas fa-arrow-left"></i> Back to Site</a>
+        <a href="#" onclick="logout()"><i class="fas fa-right-from-bracket"></i> Logout</a>
+      </div>
+    </aside>
+
+    <main class="dash-content">
+      <div class="dash-header">
+        <h1>Homepage Banners & Offers</h1>
+        <p>Create promotional banners, announce health offers, and configure hero headlines.</p>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:28px;align-items:start;">
+        <!-- Add Banner Form -->
+        <div class="dash-card">
+          <div class="dash-card-header">
+            <h3>Add New Banner</h3>
+          </div>
+          <div class="dash-card-body" style="padding:20px;">
+            <form id="add-banner-form" novalidate>
+              <div class="form-group">
+                <label for="ban-title">Headline / Title *</label>
+                <input type="text" id="ban-title" placeholder="e.g. 20% Off All Health Devices" required>
+              </div>
+              <div class="form-group">
+                <label for="ban-sub">Subtitle</label>
+                <input type="text" id="ban-sub" placeholder="e.g. Valid until end of the month">
+              </div>
+              <div class="form-group">
+                <label for="ban-link">Target Link URL</label>
+                <input type="text" id="ban-link" placeholder="/medicines.html?cat=8">
+              </div>
+              <button type="submit" class="btn btn-navy" id="save-banner-btn">
+                <i class="fas fa-plus"></i> Save Banner
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Banners List -->
+        <div class="dash-card">
+          <div class="dash-card-header">
+            <h3>Active Banners</h3>
+          </div>
+          <div class="dash-card-body" style="padding:0;">
+            <div class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Title & Subtitle</th>
+                    <th>Link</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="banners-tbody">
+                  <tr><td colspan="4" style="text-align:center;padding:20px;color:var(--muted);">Loading banners...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="footer-placeholder"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabase.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/products.js"></script>
+  <script src="/js/cart.js"></script>
+  <script src="/js/orders.js"></script>
+  <script src="/js/admin.js"></script>
+  <script src="/js/main.js"></script>
+  <script>
+    async function loadAdminBanners() {
+      var access = await checkAdminAccess();
+      if (!access) return;
+
+      var res = await db.from('banners').select('*').order('id', { ascending: false });
+      var tbody = document.getElementById('banners-tbody');
+      var list = (res && res.data) ? res.data : [];
+
+      if (list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--muted);">No banners configured yet.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = list.map(function(b) {
+        return `
+          <tr>
+            <td>
+              <strong style="color:var(--navy);font-size:14px;display:block;">${b.title}</strong>
+              <small style="color:var(--muted);">${b.subtitle || ''}</small>
+            </td>
+            <td><code style="font-size:12px;">${b.link || '/medicines.html'}</code></td>
+            <td>
+              <button onclick="toggleBannerActive(${b.id}, ${!b.is_active})" class="btn btn-sm ${b.is_active ? 'btn-outline-green' : 'btn-outline-danger'}" style="font-size:11px;padding:3px 8px;">
+                ${b.is_active ? 'Active' : 'Disabled'}
+              </button>
+            </td>
+            <td>
+              <button onclick="deleteBanner(${b.id})" class="btn btn-outline-danger btn-sm" style="font-size:11px;padding:3px 8px;" title="Delete banner">
+                <i class="fas fa-trash-can"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    document.getElementById('add-banner-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      var title = document.getElementById('ban-title').value.trim();
+      var sub = document.getElementById('ban-sub').value.trim();
+      var link = document.getElementById('ban-link').value.trim();
+      var btn = document.getElementById('save-banner-btn');
+
+      if (!title) {
+        showToast('Headline is required', 'error');
+        return;
+      }
+
+      btn.disabled = true;
+      var res = await db.from('banners').insert([{
+        title: title,
+        subtitle: sub,
+        link: link || '/medicines.html',
+        is_active: true
+      }]);
+      btn.disabled = false;
+
+      if (res.error) {
+        showToast('Error creating banner: ' + res.error.message, 'error');
+      } else {
+        showToast('Banner created', 'success');
+        document.getElementById('add-banner-form').reset();
+        loadAdminBanners();
+      }
+    });
+
+    async function toggleBannerActive(id, newState) {
+      var res = await db.from('banners').update({ is_active: newState }).eq('id', id);
+      if (res.error) {
+        showToast('Error updating banner', 'error');
+      } else {
+        showToast('Banner updated', 'success');
+        loadAdminBanners();
+      }
+    }
+
+    async function deleteBanner(id) {
+      if (confirm('Delete this banner?')) {
+        var res = await db.from('banners').delete().eq('id', id);
+        if (res.error) {
+          showToast('Could not delete banner', 'error');
+        } else {
+          showToast('Banner deleted', 'success');
+          loadAdminBanners();
+        }
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadAdminBanners);
+  </script>
+
+</body>
+</html>

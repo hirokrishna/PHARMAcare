@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Categories – PHARMAcare Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+
+  <div id="navbar-placeholder"></div>
+
+  <div class="dashboard-page">
+    <aside class="sidebar admin-sidebar">
+      <div class="sidebar-brand">
+        <p>Admin Control</p>
+        <h3>PHARMAcare</h3>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="/admin/dashboard.html"><i class="fas fa-gauge"></i> Dashboard</a>
+        <a href="/admin/sellers.html"><i class="fas fa-store"></i> Sellers</a>
+        <a href="/admin/users.html"><i class="fas fa-users"></i> Users</a>
+        <a href="/admin/products.html"><i class="fas fa-boxes-stacked"></i> Products</a>
+        <a href="/admin/orders.html"><i class="fas fa-bag-shopping"></i> Orders</a>
+        <a href="/admin/categories.html" class="active"><i class="fas fa-list"></i> Categories</a>
+        <a href="/admin/banners.html"><i class="fas fa-images"></i> Banners</a>
+        <a href="/admin/messages.html"><i class="fas fa-envelope"></i> Messages</a>
+      </nav>
+      <div class="sidebar-footer">
+        <a href="/index.html"><i class="fas fa-arrow-left"></i> Back to Site</a>
+        <a href="#" onclick="logout()"><i class="fas fa-right-from-bracket"></i> Logout</a>
+      </div>
+    </aside>
+
+    <main class="dash-content">
+      <div class="dash-header">
+        <h1>Product Categories</h1>
+        <p>Manage healthcare categories for the homepage tiles and catalog filtering.</p>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:28px;align-items:start;">
+        <!-- Add Category Form -->
+        <div class="dash-card">
+          <div class="dash-card-header">
+            <h3>Add New Category</h3>
+          </div>
+          <div class="dash-card-body" style="padding:20px;">
+            <form id="add-cat-form" novalidate>
+              <div class="form-group">
+                <label for="cat-name">Category Name *</label>
+                <input type="text" id="cat-name" placeholder="e.g. Skin Care, Eye Care" required>
+              </div>
+              <div class="form-group">
+                <label for="cat-icon">FontAwesome Icon Class (optional)</label>
+                <input type="text" id="cat-icon" placeholder="e.g. fa-eye, fa-shield-virus">
+                <small style="color:var(--muted);font-size:11px;">e.g. fa-pills, fa-heart-pulse, fa-spa</small>
+              </div>
+              <button type="submit" class="btn btn-navy" id="save-cat-btn">
+                <i class="fas fa-plus"></i> Save Category
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Categories List -->
+        <div class="dash-card">
+          <div class="dash-card-header">
+            <h3>Active Categories</h3>
+          </div>
+          <div class="dash-card-body" style="padding:0;">
+            <div class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Icon</th>
+                    <th>Category Name</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="categories-tbody">
+                  <tr><td colspan="4" style="text-align:center;padding:20px;color:var(--muted);">Loading categories...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="footer-placeholder"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabase.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/products.js"></script>
+  <script src="/js/cart.js"></script>
+  <script src="/js/orders.js"></script>
+  <script src="/js/admin.js"></script>
+  <script src="/js/main.js"></script>
+  <script>
+    async function loadAdminCategories() {
+      var access = await checkAdminAccess();
+      if (!access) return;
+
+      var cats = await getCategories();
+      var tbody = document.getElementById('categories-tbody');
+
+      if (!cats || cats.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--muted);">No categories created yet.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = cats.map(function(c) {
+        return `
+          <tr>
+            <td><strong>#${c.id}</strong></td>
+            <td><i class="fas ${c.icon || 'fa-tag'}" style="color:var(--green);font-size:18px;"></i></td>
+            <td><strong style="color:var(--navy);">${c.name}</strong></td>
+            <td>
+              <button onclick="deleteCategory(${c.id})" class="btn btn-outline-danger btn-sm" style="font-size:11px;padding:3px 8px;" title="Delete category">
+                <i class="fas fa-trash-can"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    document.getElementById('add-cat-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      var name = document.getElementById('cat-name').value.trim();
+      var icon = document.getElementById('cat-icon').value.trim();
+      var btn = document.getElementById('save-cat-btn');
+
+      if (!name) {
+        showToast('Category name is required', 'error');
+        return;
+      }
+
+      btn.disabled = true;
+      var res = await db.from('categories').insert([{ name: name, icon: icon || 'fa-tag' }]);
+      btn.disabled = false;
+
+      if (res.error) {
+        showToast('Error adding category: ' + res.error.message, 'error');
+      } else {
+        showToast('Category added', 'success');
+        document.getElementById('add-cat-form').reset();
+        loadAdminCategories();
+      }
+    });
+
+    async function deleteCategory(id) {
+      if (confirm('Are you sure you want to delete this category? Products linked to it may be affected.')) {
+        var res = await db.from('categories').delete().eq('id', id);
+        if (res.error) {
+          showToast('Could not delete category: ' + res.error.message, 'error');
+        } else {
+          showToast('Category deleted', 'success');
+          loadAdminCategories();
+        }
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadAdminCategories);
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contact Us – PHARMAcare</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/forms.css">
+</head>
+<body>
+
+  <div id="navbar-placeholder"></div>
+
+  <section class="section">
+    <div class="container">
+      <div class="breadcrumb">
+        <a href="/index.html">Home</a>
+        <span>/</span>
+        <span>Contact Us</span>
+      </div>
+
+      <div class="section-header" style="margin-bottom: 24px;">
+        <div>
+          <h2>Get in Touch</h2>
+          <p style="color:var(--muted);font-size:14px;margin-top:4px;">Have questions about your order or our services? We're here to help.</p>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:32px;align-items:start;">
+        <!-- Contact Form -->
+        <div class="card" style="padding:28px;">
+          <h3 style="color:var(--navy);font-size:18px;margin-bottom:16px;">Send Us a Message</h3>
+
+          <div class="form-alert form-alert-error" id="contact-error"></div>
+          <div class="form-alert form-alert-success" id="contact-success"></div>
+
+          <form id="contact-form" novalidate>
+            <div class="form-group">
+              <label for="contact-name">Your Name</label>
+              <input type="text" id="contact-name" placeholder="Enter your full name" required>
+            </div>
+            <div class="form-group">
+              <label for="contact-email">Email Address</label>
+              <input type="email" id="contact-email" placeholder="Enter your email" required>
+            </div>
+            <div class="form-group">
+              <label for="contact-msg">Message</label>
+              <textarea id="contact-msg" rows="5" placeholder="Write your query or feedback here..." required style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:14px;outline:none;resize:vertical;"></textarea>
+            </div>
+            <button type="submit" class="btn btn-navy" id="contact-btn">
+              <i class="fas fa-paper-plane"></i> Send Message
+            </button>
+          </form>
+        </div>
+
+        <!-- Contact Info -->
+        <div>
+          <div class="card" style="padding:24px;margin-bottom:20px;">
+            <h3 style="color:var(--navy);font-size:17px;margin-bottom:16px;">Contact Information</h3>
+            <div style="display:flex;gap:14px;margin-bottom:16px;align-items:flex-start;">
+              <i class="fas fa-location-dot" style="color:var(--green);font-size:18px;margin-top:2px;"></i>
+              <div>
+                <strong style="color:var(--navy);font-size:14px;display:block;">Pharmacy Address</strong>
+                <span style="color:var(--muted);font-size:13px;line-height:1.4;display:block;">102 Health Avenue, Medical Campus,<br>Mumbai, Maharashtra, India - 400001</span>
+              </div>
+            </div>
+            <div style="display:flex;gap:14px;margin-bottom:16px;align-items:flex-start;">
+              <i class="fas fa-envelope" style="color:var(--green);font-size:18px;margin-top:2px;"></i>
+              <div>
+                <strong style="color:var(--navy);font-size:14px;display:block;">Email Support</strong>
+                <span style="color:var(--muted);font-size:13px;display:block;">support@pharmacare.com</span>
+              </div>
+            </div>
+            <div style="display:flex;gap:14px;margin-bottom:16px;align-items:flex-start;">
+              <i class="fas fa-phone" style="color:var(--green);font-size:18px;margin-top:2px;"></i>
+              <div>
+                <strong style="color:var(--navy);font-size:14px;display:block;">Phone Support</strong>
+                <span style="color:var(--muted);font-size:13px;display:block;">+91 98765 43210</span>
+              </div>
+            </div>
+            <div style="display:flex;gap:14px;align-items:flex-start;">
+              <i class="fas fa-clock" style="color:var(--green);font-size:18px;margin-top:2px;"></i>
+              <div>
+                <strong style="color:var(--navy);font-size:14px;display:block;">Working Hours</strong>
+                <span style="color:var(--muted);font-size:13px;display:block;">Monday - Saturday: 8:00 AM - 10:00 PM<br>Sunday: 9:00 AM - 6:00 PM</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="background:var(--mint);border:1px solid var(--border);border-radius:var(--radius);padding:20px;">
+            <h4 style="color:var(--navy);font-size:15px;margin-bottom:6px;"><i class="fas fa-notes-medical" style="color:var(--green);margin-right:6px;"></i> Prescription Orders</h4>
+            <p style="font-size:13px;color:var(--text);line-height:1.5;">For prescription verification updates or prescription questions, our registered pharmacists review uploaded documents within a few hours of placing your order.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div id="footer-placeholder"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabase.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/products.js"></script>
+  <script src="/js/cart.js"></script>
+  <script src="/js/orders.js"></script>
+  <script src="/js/main.js"></script>
+  <script>
+    document.getElementById('contact-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      var name = document.getElementById('contact-name').value.trim();
+      var email = document.getElementById('contact-email').value.trim();
+      var message = document.getElementById('contact-msg').value.trim();
+      var errBox = document.getElementById('contact-error');
+      var succBox = document.getElementById('contact-success');
+      var btn = document.getElementById('contact-btn');
+
+      errBox.classList.remove('visible');
+      succBox.classList.remove('visible');
+
+      if (!name || !email || !message) {
+        errBox.textContent = 'Please fill out all fields.';
+        errBox.classList.add('visible');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Sending message...';
+
+      var res = await db.from('contact_messages').insert([{
+        name: name,
+        email: email,
+        message: message
+      }]);
+
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Message';
+
+      if (res.error) {
+        errBox.textContent = 'Could not send message: ' + res.error.message;
+        errBox.classList.add('visible');
+      } else {
+        succBox.textContent = 'Thank you! Your message has been sent. We will get back to you shortly.';
+        succBox.classList.add('visible');
+        document.getElementById('contact-name').value = '';
+        document.getElementById('contact-email').value = '';
+        document.getElementById('contact-msg').value = '';
+      }
+    });
+  </script>
+
+</body>
+</html>

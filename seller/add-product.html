@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Add Product – PHARMAcare Seller</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+
+  <div id="navbar-placeholder"></div>
+
+  <div class="dashboard-page">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <p>Pharmacy Panel</p>
+        <h3 id="sidebar-shop-name">Seller Store</h3>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="/seller/dashboard.html"><i class="fas fa-gauge"></i> Dashboard</a>
+        <a href="/seller/products.html"><i class="fas fa-boxes-stacked"></i> My Products</a>
+        <a href="/seller/add-product.html" class="active"><i class="fas fa-plus-circle"></i> Add Product</a>
+        <a href="/seller/orders.html"><i class="fas fa-bag-shopping"></i> Orders</a>
+      </nav>
+      <div class="sidebar-footer">
+        <a href="/index.html"><i class="fas fa-arrow-left"></i> Back to Site</a>
+        <a href="#" onclick="logout()"><i class="fas fa-right-from-bracket"></i> Logout</a>
+      </div>
+    </aside>
+
+    <main class="dash-content">
+      <div class="dash-header">
+        <h1 id="page-title">Add New Product</h1>
+        <p>List a medicine or healthcare product for sale on PHARMAcare.</p>
+      </div>
+
+      <div id="approval-warning" style="display:none;background:#fef3c7;border:1.5px solid var(--orange);color:#92400e;padding:16px 20px;border-radius:var(--radius-sm);margin-bottom:24px;">
+        <i class="fas fa-triangle-exclamation" style="margin-right:8px;"></i>
+        <strong>Action Restricted:</strong> Your seller account is not approved yet. Only approved sellers can publish products.
+      </div>
+
+      <div class="dash-card">
+        <div class="dash-card-body" style="padding:28px;">
+          <form id="product-form" novalidate>
+            <input type="hidden" id="edit-product-id">
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:16px;">
+              <div class="form-group" style="margin:0;">
+                <label for="prod-name">Product / Medicine Name *</label>
+                <input type="text" id="prod-name" placeholder="e.g. Paracetamol 500 mg" required>
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label for="prod-category">Category *</label>
+                <select id="prod-category" required style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:14px;">
+                  <option value="">Select Category</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:16px;">
+              <div class="form-group" style="margin:0;">
+                <label for="prod-pack">Pack Info *</label>
+                <input type="text" id="prod-pack" placeholder="e.g. Tablet (10's), Bottle (100 ml)" required>
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label for="prod-mfg">Manufacturer</label>
+                <input type="text" id="prod-mfg" placeholder="e.g. Cipla, Sun Pharma, Abbott">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="prod-desc">Description</label>
+              <textarea id="prod-desc" rows="3" placeholder="Brief overview of the medicine and health benefits..." style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:14px;"></textarea>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:16px;">
+              <div class="form-group" style="margin:0;">
+                <label for="prod-comp">Composition</label>
+                <input type="text" id="prod-comp" placeholder="e.g. Paracetamol IP 500mg">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label for="prod-uses">Key Uses</label>
+                <input type="text" id="prod-uses" placeholder="e.g. Fever, body pain, headache">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="prod-side">Side Effects (if any)</label>
+              <input type="text" id="prod-side" placeholder="e.g. Mild nausea, dizziness in rare cases">
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px;margin-bottom:20px;">
+              <div class="form-group" style="margin:0;">
+                <label for="prod-mrp">MRP (&#8377;) *</label>
+                <input type="number" step="0.01" min="0" id="prod-mrp" placeholder="0.00" required>
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label for="prod-price">Selling Price (&#8377;) *</label>
+                <input type="number" step="0.01" min="0" id="prod-price" placeholder="0.00" required>
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label for="prod-stock">Stock Units *</label>
+                <input type="number" min="0" id="prod-stock" placeholder="0" required>
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label for="prod-expiry">Expiry Date</label>
+                <input type="date" id="prod-expiry">
+              </div>
+            </div>
+
+            <!-- Image Upload -->
+            <div class="form-group">
+              <label for="prod-image">Product Image (optional)</label>
+              <input type="file" id="prod-image" accept="image/jpeg,image/png,image/webp">
+              <span id="current-image-preview" style="display:block;margin-top:6px;font-size:12px;color:var(--muted);"></span>
+            </div>
+
+            <!-- Prescription Required Checkbox -->
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:28px;padding:12px 16px;background:var(--grey-bg);border-radius:var(--radius-sm);border:1px solid var(--border);">
+              <input type="checkbox" id="prod-rx" style="width:18px;height:18px;cursor:pointer;">
+              <div>
+                <label for="prod-rx" style="margin:0;font-weight:600;color:var(--navy);cursor:pointer;">Requires Doctor's Prescription (Rx)</label>
+                <p style="font-size:12px;color:var(--muted);margin:0;">If checked, customers must upload a valid prescription before buying this medicine.</p>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:12px;">
+              <button type="submit" class="btn btn-navy" id="submit-prod-btn">
+                <i class="fas fa-plus"></i> Save Product
+              </button>
+              <a href="/seller/products.html" class="btn btn-outline-danger">Cancel</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="footer-placeholder"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabase.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/products.js"></script>
+  <script src="/js/cart.js"></script>
+  <script src="/js/orders.js"></script>
+  <script src="/js/seller.js"></script>
+  <script src="/js/main.js"></script>
+  <script>
+    var currentSeller = null;
+    var isEditMode = false;
+    var existingImageUrl = null;
+
+    async function initAddProduct() {
+      var access = await checkSellerAccess();
+      if (!access) return;
+
+      currentSeller = access;
+      if (access.sellerInfo && access.sellerInfo.shop_name) {
+        document.getElementById('sidebar-shop-name').textContent = access.sellerInfo.shop_name;
+      }
+
+      var isApproved = access.sellerInfo && access.sellerInfo.status === 'approved';
+      if (!isApproved) {
+        document.getElementById('approval-warning').style.display = 'block';
+        document.getElementById('submit-prod-btn').disabled = true;
+      }
+
+      // Load categories
+      var cats = await getCategories();
+      var catSelect = document.getElementById('prod-category');
+      cats.forEach(function(c) {
+        var opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.name;
+        catSelect.appendChild(opt);
+      });
+
+      // Check for ?id= (edit mode)
+      var params = new URLSearchParams(window.location.search);
+      var editId = params.get('id');
+      if (editId) {
+        isEditMode = true;
+        document.getElementById('edit-product-id').value = editId;
+        document.getElementById('page-title').textContent = 'Edit Product';
+        document.getElementById('submit-prod-btn').innerHTML = '<i class="fas fa-floppy-disk"></i> Update Product';
+
+        var p = await getProduct(editId);
+        if (p) {
+          document.getElementById('prod-name').value = p.name || '';
+          document.getElementById('prod-category').value = p.category_id || '';
+          document.getElementById('prod-pack').value = p.pack_info || '';
+          document.getElementById('prod-mfg').value = p.manufacturer || '';
+          document.getElementById('prod-desc').value = p.description || '';
+          document.getElementById('prod-comp').value = p.composition || '';
+          document.getElementById('prod-uses').value = p.uses || '';
+          document.getElementById('prod-side').value = p.side_effects || '';
+          document.getElementById('prod-mrp').value = p.mrp || '';
+          document.getElementById('prod-price').value = p.price || '';
+          document.getElementById('prod-stock').value = p.stock || 0;
+          document.getElementById('prod-expiry').value = p.expiry_date || '';
+          document.getElementById('prod-rx').checked = !!p.requires_prescription;
+
+          if (p.image_url) {
+            existingImageUrl = p.image_url;
+            document.getElementById('current-image-preview').innerHTML = 'Current image: <a href="' + p.image_url + '" target="_blank" style="color:var(--green)">View image</a>';
+          }
+        }
+      }
+    }
+
+    document.getElementById('product-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      var name = document.getElementById('prod-name').value.trim();
+      var catId = parseInt(document.getElementById('prod-category').value);
+      var pack = document.getElementById('prod-pack').value.trim();
+      var mfg = document.getElementById('prod-mfg').value.trim();
+      var desc = document.getElementById('prod-desc').value.trim();
+      var comp = document.getElementById('prod-comp').value.trim();
+      var uses = document.getElementById('prod-uses').value.trim();
+      var side = document.getElementById('prod-side').value.trim();
+      var mrp = parseFloat(document.getElementById('prod-mrp').value);
+      var price = parseFloat(document.getElementById('prod-price').value);
+      var stock = parseInt(document.getElementById('prod-stock').value);
+      var expiry = document.getElementById('prod-expiry').value || null;
+      var requiresRx = document.getElementById('prod-rx').checked;
+      var fileInput = document.getElementById('prod-image');
+
+      if (!name || isNaN(catId) || !pack || isNaN(mrp) || isNaN(price) || isNaN(stock)) {
+        showToast('Please fill in all required fields marked with *', 'error');
+        return;
+      }
+
+      if (price > mrp) {
+        showToast('Selling price cannot exceed MRP', 'error');
+        return;
+      }
+
+      var btn = document.getElementById('submit-prod-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+      var imageUrl = existingImageUrl;
+      if (fileInput.files && fileInput.files.length > 0) {
+        var file = fileInput.files[0];
+        var ext = file.name.split('.').pop();
+        var filePath = currentSeller.user.id + '/' + Date.now() + '.' + ext;
+
+        var uploadRes = await db.storage.from('product-images').upload(filePath, file);
+        if (!uploadRes.error) {
+          var pubRes = db.storage.from('product-images').getPublicUrl(filePath);
+          imageUrl = pubRes.data.publicUrl;
+        }
+      }
+
+      var productPayload = {
+        seller_id: currentSeller.user.id,
+        category_id: catId,
+        name: name,
+        pack_info: pack,
+        manufacturer: mfg,
+        description: desc,
+        composition: comp,
+        uses: uses,
+        side_effects: side,
+        mrp: mrp,
+        price: price,
+        stock: stock,
+        expiry_date: expiry,
+        requires_prescription: requiresRx,
+        image_url: imageUrl,
+        is_active: true
+      };
+
+      var res;
+      if (isEditMode) {
+        var editId = document.getElementById('edit-product-id').value;
+        res = await db.from('products').update(productPayload).eq('id', editId);
+      } else {
+        res = await db.from('products').insert([productPayload]);
+      }
+
+      btn.disabled = false;
+      btn.innerHTML = isEditMode ? '<i class="fas fa-floppy-disk"></i> Update Product' : '<i class="fas fa-plus"></i> Save Product';
+
+      if (res.error) {
+        showToast('Error saving product: ' + res.error.message, 'error');
+      } else {
+        showToast(isEditMode ? 'Product updated successfully' : 'Product added successfully', 'success');
+        setTimeout(function() {
+          window.location.href = '/seller/products.html';
+        }, 1000);
+      }
+    });
+
+    document.addEventListener('DOMContentLoaded', initAddProduct);
+  </script>
+
+</body>
+</html>

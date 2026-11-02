@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register – PHARMAcare</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/forms.css">
+</head>
+<body>
+
+  <div id="navbar-placeholder"></div>
+
+  <div class="form-page" style="padding: 40px 16px;">
+    <div class="form-card form-card-wide">
+      <div class="form-card-header">
+        <h1>Create Account</h1>
+        <p>Register as a customer or seller</p>
+      </div>
+
+      <!-- Role toggle -->
+      <div class="role-toggle" id="role-toggle">
+        <button type="button" class="role-btn selected" data-role="customer">
+          <i class="fas fa-user"></i> Customer
+        </button>
+        <button type="button" class="role-btn" data-role="seller">
+          <i class="fas fa-store"></i> Seller / Pharmacist
+        </button>
+      </div>
+
+      <div class="form-alert form-alert-error" id="error-msg"></div>
+      <div class="form-alert form-alert-success" id="success-msg"></div>
+
+      <form id="register-form" novalidate>
+        <input type="hidden" id="selected-role" value="customer">
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="full-name">Full Name</label>
+            <input type="text" id="full-name" placeholder="Your full name" required>
+          </div>
+          <div class="form-group">
+            <label for="phone">Phone Number</label>
+            <input type="tel" id="phone" placeholder="10-digit number">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" placeholder="you@example.com" required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" placeholder="At least 6 characters" required>
+          </div>
+          <div class="form-group">
+            <label for="confirm-password">Confirm Password</label>
+            <input type="password" id="confirm-password" placeholder="Repeat password" required>
+          </div>
+        </div>
+
+        <!-- Seller-only fields -->
+        <div class="seller-fields" id="seller-fields">
+          <hr style="border:none;border-top:1px solid var(--border);margin:8px 0 18px;">
+          <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">Seller / Pharmacy Details</p>
+          <div class="form-group">
+            <label for="shop-name">Shop / Pharmacy Name</label>
+            <input type="text" id="shop-name" placeholder="e.g. Sharma Medical Store">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="licence">Drug Licence Number</label>
+              <input type="text" id="licence" placeholder="Licence no.">
+            </div>
+            <div class="form-group">
+              <label for="gst">GST Number (optional)</label>
+              <input type="text" id="gst" placeholder="GST no.">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="shop-address">Shop Address</label>
+            <input type="text" id="shop-address" placeholder="Full address">
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-navy btn-block" id="register-btn">Create Account</button>
+      </form>
+
+      <div class="form-footer-link">
+        Already have an account? <a href="/login.html">Login here</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="footer-placeholder"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabase.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/products.js"></script>
+  <script src="/js/cart.js"></script>
+  <script src="/js/orders.js"></script>
+  <script src="/js/main.js"></script>
+  <script>
+    // role toggle
+    var roleToggle = document.getElementById('role-toggle');
+    var selectedRoleInput = document.getElementById('selected-role');
+    var sellerFields = document.getElementById('seller-fields');
+
+    roleToggle.addEventListener('click', function(e) {
+      var btn = e.target.closest('.role-btn');
+      if (!btn) return;
+      roleToggle.querySelectorAll('.role-btn').forEach(function(b) { b.classList.remove('selected'); });
+      btn.classList.add('selected');
+      var role = btn.getAttribute('data-role');
+      selectedRoleInput.value = role;
+      sellerFields.classList.toggle('visible', role === 'seller');
+    });
+
+    document.getElementById('register-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      var errorBox = document.getElementById('error-msg');
+      var successBox = document.getElementById('success-msg');
+      var btn = document.getElementById('register-btn');
+
+      errorBox.classList.remove('visible');
+      successBox.classList.remove('visible');
+
+      var fullName = document.getElementById('full-name').value.trim();
+      var phone = document.getElementById('phone').value.trim();
+      var email = document.getElementById('email').value.trim();
+      var password = document.getElementById('password').value;
+      var confirm = document.getElementById('confirm-password').value;
+      var role = selectedRoleInput.value;
+
+      if (!fullName || !email || !password) {
+        errorBox.textContent = 'Please fill in all required fields.';
+        errorBox.classList.add('visible');
+        return;
+      }
+      if (password !== confirm) {
+        errorBox.textContent = 'Passwords do not match.';
+        errorBox.classList.add('visible');
+        return;
+      }
+      if (password.length < 6) {
+        errorBox.textContent = 'Password must be at least 6 characters.';
+        errorBox.classList.add('visible');
+        return;
+      }
+
+      var meta = { full_name: fullName, phone: phone, role: role };
+      if (role === 'seller') {
+        meta.shop_name = document.getElementById('shop-name').value.trim();
+        meta.licence_number = document.getElementById('licence').value.trim();
+        meta.gst_number = document.getElementById('gst').value.trim();
+        meta.shop_address = document.getElementById('shop-address').value.trim();
+        if (!meta.shop_name || !meta.licence_number) {
+          errorBox.textContent = 'Shop name and licence number are required for sellers.';
+          errorBox.classList.add('visible');
+          return;
+        }
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Creating account...';
+
+      var res = await db.auth.signUp({ email: email, password: password, options: { data: meta } });
+
+      if (res.error) {
+        errorBox.textContent = res.error.message;
+        errorBox.classList.add('visible');
+        btn.disabled = false;
+        btn.textContent = 'Create Account';
+        return;
+      }
+
+      if (res.data.session) {
+        if (role === 'seller') {
+          successBox.innerHTML = '<strong>Account created!</strong> Your seller account is waiting for admin approval.<br>Redirecting to dashboard...';
+          successBox.classList.add('visible');
+          btn.textContent = 'Redirecting...';
+          setTimeout(function() {
+            window.location.href = '/seller/dashboard.html';
+          }, 2000);
+        } else {
+          successBox.textContent = 'Account created successfully! Redirecting...';
+          successBox.classList.add('visible');
+          btn.textContent = 'Redirecting...';
+          setTimeout(function() {
+            var redirect = localStorage.getItem('redirect_after_login') || '/index.html';
+            localStorage.removeItem('redirect_after_login');
+            window.location.href = redirect;
+          }, 1500);
+        }
+      } else {
+        successBox.innerHTML = 'Account created! Please check your email to confirm, then <a href="/login.html" style="color:var(--green);font-weight:600;">login here</a>.';
+        successBox.classList.add('visible');
+        btn.textContent = 'Registered';
+      }
+    });
+  </script>
+
+</body>
+</html>

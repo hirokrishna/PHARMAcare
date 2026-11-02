@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Wishlist – PHARMAcare</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <div id="navbar-placeholder"></div>
+
+  <section class="section">
+    <div class="container">
+      <div class="breadcrumb">
+        <a href="/index.html">Home</a>
+        <span>/</span>
+        <span>Wishlist</span>
+      </div>
+
+      <div class="section-header" style="margin-bottom: 24px;">
+        <h2>My Wishlist</h2>
+      </div>
+
+      <div id="wishlist-container">
+        <p class="loading-text"><i class="fas fa-spinner fa-spin"></i> Loading wishlist...</p>
+      </div>
+    </div>
+  </section>
+
+  <div id="footer-placeholder"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabase.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/products.js"></script>
+  <script src="/js/cart.js"></script>
+  <script src="/js/orders.js"></script>
+  <script src="/js/main.js"></script>
+  <script>
+    async function loadWishlist() {
+      var container = document.getElementById('wishlist-container');
+      var user = await getCurrentUser();
+
+      if (!user) {
+        container.innerHTML = `
+          <div class="empty-state" style="padding:60px 0;">
+            <i class="fas fa-lock" style="font-size:48px;color:var(--navy);margin-bottom:16px;"></i>
+            <h2 style="color:var(--navy);font-size:20px;margin-bottom:8px;">Please Login to View Wishlist</h2>
+            <p style="color:var(--muted);font-size:14px;margin-bottom:20px;">Save your favorite medicines and check their availability anytime.</p>
+            <a href="/login.html" class="btn btn-navy">Login to Account</a>
+          </div>
+        `;
+        return;
+      }
+
+      var res = await db.from('wishlist')
+        .select('id, products(id, name, pack_info, price, mrp, image_url, stock, requires_prescription)')
+        .eq('user_id', user.id);
+
+      if (res.error || !res.data || res.data.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state" style="padding:60px 0;">
+            <i class="far fa-heart" style="font-size:48px;color:var(--border);margin-bottom:16px;"></i>
+            <h2 style="color:var(--navy);font-size:22px;margin-bottom:8px;">Your wishlist is empty</h2>
+            <p style="color:var(--muted);font-size:14px;margin-bottom:24px;">You haven't saved any medicines or products yet.</p>
+            <a href="/medicines.html" class="btn btn-navy">Browse Medicines</a>
+          </div>
+        `;
+        return;
+      }
+
+      var html = '<div class="product-grid">';
+      res.data.forEach(function(item) {
+        var p = item.products;
+        if (!p && typeof getFallbackProduct === 'function') {
+          p = getFallbackProduct(item.product_id);
+        }
+        if (!p) return;
+
+        // Use the latest custom image link
+        if (typeof enrichProduct === 'function') {
+          p = enrichProduct(p);
+        } else if (typeof getFallbackProduct === 'function') {
+          var fb = getFallbackProduct(p.id, p.name);
+          if (fb && fb.image_url) p.image_url = fb.image_url;
+        }
+
+        var discount = p.mrp > p.price ? Math.round(((p.mrp - p.price) / p.mrp) * 100) + '% off' : '';
+        var rxBadge = p.requires_prescription ? '<span class="badge-rx">Rx</span>' : '';
+        var stockBadge = p.stock === 0 ? '<span class="badge-out">Out of stock</span>' : (p.stock <= 10 ? '<span class="badge-low-stock">Low stock</span>' : '');
+        var imgTag = p.image_url
+          ? '<img src="' + p.image_url + '" alt="' + p.name + '" class="product-card-img">'
+          : '<div class="product-card-img" style="display:flex;align-items:center;justify-content:center;"><i class="fas fa-pills" style="font-size:40px;color:var(--border)"></i></div>';
+
+        html += `
+          <div class="product-card">
+            <a href="/product.html?id=${p.id}">${imgTag}</a>
+            <div class="product-card-body">
+              <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:4px">${rxBadge}${stockBadge}</div>
+              <a href="/product.html?id=${p.id}" class="product-card-name">${p.name}</a>
+              <p class="product-card-pack">${p.pack_info || ''}</p>
+              <div class="product-card-price">
+                <span class="price-current">&#8377;${p.price.toFixed(2)}</span>
+                ${p.mrp > p.price ? '<span class="price-mrp">&#8377;' + p.mrp.toFixed(2) + '</span>' : ''}
+                ${discount ? '<span class="badge-discount">' + discount + '</span>' : ''}
+              </div>
+            </div>
+            <div class="product-card-footer" style="display:grid;grid-template-columns:1fr auto;gap:8px;">
+              <button class="btn btn-green btn-sm" onclick="addToCart('${p.id}', 1)" ${p.stock === 0 ? 'disabled' : ''}>
+                <i class="fas fa-cart-plus"></i> Add
+              </button>
+              <button class="btn btn-outline-danger btn-sm" onclick="removeWishlistItem('${item.id}')" title="Remove">
+                <i class="fas fa-trash-can"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      });
+      html += '</div>';
+      container.innerHTML = html;
+    }
+
+    async function removeWishlistItem(wishlistId) {
+      var res = await db.from('wishlist').delete().eq('id', wishlistId);
+      if (!res.error) {
+        showToast('Removed from wishlist', 'success');
+        loadWishlist();
+      } else {
+        showToast('Error removing item', 'error');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadWishlist);
+  </script>
+
+</body>
+</html>

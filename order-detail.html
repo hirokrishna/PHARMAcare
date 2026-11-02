@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order Details – PHARMAcare</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    @media print {
+      body * { visibility: hidden; }
+      #invoice-printable, #invoice-printable * { visibility: visible; }
+      #invoice-printable { position: absolute; left: 0; top: 0; width: 100%; }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="navbar-placeholder" class="no-print"></div>
+
+  <section class="section">
+    <div class="container" id="order-container">
+      <div class="breadcrumb no-print">
+        <a href="/index.html">Home</a>
+        <span>/</span>
+        <a href="/my-orders.html">My Orders</a>
+        <span>/</span>
+        <span id="bc-order-no">Order</span>
+      </div>
+
+      <div id="order-content">
+        <p class="loading-text"><i class="fas fa-spinner fa-spin"></i> Loading order details...</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Review Modal -->
+  <div id="review-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+    <div class="card" style="width:90%;max-width:440px;padding:28px;background:var(--white);position:relative;">
+      <h3 style="color:var(--navy);font-size:18px;margin-bottom:6px;">Write a Review</h3>
+      <p id="review-product-name" style="font-size:13px;color:var(--muted);margin-bottom:16px;">Product</p>
+      <input type="hidden" id="review-product-id">
+
+      <div class="form-group">
+        <label>Rating</label>
+        <select id="review-rating" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:4px;font-family:inherit;">
+          <option value="5">★★★★★ - Excellent (5/5)</option>
+          <option value="4">★★★★☆ - Very Good (4/5)</option>
+          <option value="3">★★★☆☆ - Good (3/5)</option>
+          <option value="2">★★☆☆☆ - Fair (2/5)</option>
+          <option value="1">★☆☆☆☆ - Poor (1/5)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Your Feedback</label>
+        <textarea id="review-comment" rows="3" placeholder="Share your experience with this medicine..." style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:4px;font-family:inherit;font-size:13px;"></textarea>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button type="button" class="btn btn-outline-danger btn-sm" onclick="closeReviewModal()">Cancel</button>
+        <button type="button" class="btn btn-green btn-sm" onclick="submitReview()">Submit Review</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="footer-placeholder" class="no-print"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabase.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/products.js"></script>
+  <script src="/js/cart.js"></script>
+  <script src="/js/orders.js"></script>
+  <script src="/js/main.js"></script>
+  <script>
+    var currentOrder = null;
+    var orderId = null;
+
+    async function loadOrderDetail() {
+      var params = new URLSearchParams(window.location.search);
+      orderId = params.get('id');
+      var container = document.getElementById('order-content');
+
+      var user = await requireLogin();
+      if (!user) return;
+
+      if (!orderId) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-box"></i><h2>No order specified</h2><a href="/my-orders.html" class="btn btn-navy">Back to Orders</a></div>';
+        return;
+      }
+
+      var res = await db.from('orders')
+        .select('*, order_items(*)')
+        .eq('id', orderId)
+        .maybeSingle();
+
+      if (res && res.data) {
+        currentOrder = res.data;
+      } else {
+        // Fallback to local order cache
+        if (typeof getLocalOrders === 'function') {
+          var localList = getLocalOrders(user.id);
+          var match = localList.find(function(o) { return o.id === orderId; });
+          if (match) {
+            currentOrder = match;
+          }
+        }
+      }
+
+      if (!currentOrder) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-triangle-exclamation"></i><h2>Order Not Found</h2><p>You may not have permission to view this order.</p><a href="/my-orders.html" class="btn btn-navy">Back to Orders</a></div>';
+        return;
+      }
+
+      if (!currentOrder.order_items) currentOrder.order_items = [];
+      document.getElementById('bc-order-no').textContent = 'Order #' + (currentOrder.order_no || currentOrder.id.toString().substring(0, 8));
+
+      var addr = currentOrder.address_snapshot || {};
+      var dateFormatted = new Date(currentOrder.created_at).toLocaleDateString('en-IN', {
+        day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+      });
+
+      var steps = ['placed', 'confirmed', 'packed', 'shipped', 'delivered'];
+      var isCancelled = currentOrder.status === 'cancelled';
+      var currentStepIndex = steps.indexOf(currentOrder.status);
+
+      var timelineHtml = '';
+      if (isCancelled) {
+        timelineHtml = `
+          <div style="background:#fee2e2;color:var(--red);padding:14px 20px;border-radius:var(--radius-sm);margin-bottom:28px;display:flex;align-items:center;gap:12px;font-weight:600;">
+            <i class="fas fa-circle-xmark" style="font-size:20px;"></i>
+            <span>This order was cancelled. Restocked medicines are available in our catalog.</span>
+          </div>
+        `;
+      } else {
+        timelineHtml = `
+          <div class="card no-print" style="padding:24px;margin-bottom:28px;">
+            <h3 style="color:var(--navy);font-size:16px;margin-bottom:20px;">Tracking Status</h3>
+            <div style="display:flex;justify-content:space-between;position:relative;align-items:center;">
+              <div style="position:absolute;top:16px;left:5%;right:5%;height:3px;background:var(--border);z-index:1;"></div>
+              ${steps.map(function(s, idx) {
+                var done = idx <= currentStepIndex;
+                var active = idx === currentStepIndex;
+                return `
+                  <div style="z-index:2;text-align:center;">
+                    <div style="width:34px;height:34px;border-radius:50%;background:${done ? 'var(--green)' : 'var(--white)'};border:2.5px solid ${done ? 'var(--green)' : 'var(--border)'};color:${done ? 'var(--white)' : 'var(--muted)'};display:flex;align-items:center;justify-content:center;margin:0 auto 8px;font-size:13px;font-weight:700;">
+                      ${done ? '✓' : idx + 1}
+                    </div>
+                    <span style="font-size:12px;color:${active ? 'var(--navy)' : (done ? 'var(--green)' : 'var(--muted)')};font-weight:${active ? '700' : '500'};text-transform:capitalize;">${s}</span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      var canCancel = ['placed', 'confirmed', 'packed'].includes(currentOrder.status);
+
+      container.innerHTML = `
+        <div id="invoice-printable">
+          <div class="section-header" style="margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+            <div>
+              <h2>Order Details <span style="color:var(--green)">#${currentOrder.order_no}</span></h2>
+              <p style="color:var(--muted);font-size:13px;">Placed on ${dateFormatted}</p>
+            </div>
+            <div class="no-print" style="display:flex;gap:10px;">
+              <button onclick="window.print()" class="btn btn-outline-green btn-sm">
+                <i class="fas fa-print"></i> Print Invoice
+              </button>
+              ${canCancel ? `
+                <button onclick="handleCancelOrder()" class="btn btn-outline-danger btn-sm">
+                  <i class="fas fa-ban"></i> Cancel Order
+                </button>
+              ` : ''}
+            </div>
+          </div>
+
+          ${timelineHtml}
+
+          <!-- Order Content Grid -->
+          <div style="display:grid;grid-template-columns:1.4fr 0.8fr;gap:28px;align-items:start;">
+            <!-- Left: Order Items -->
+            <div class="card" style="padding:24px;">
+              <h3 style="color:var(--navy);font-size:16px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:10px;">Ordered Items</h3>
+              <div style="display:grid;gap:16px;">
+                ${currentOrder.order_items.map(function(item) {
+                  return `
+                    <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--grey-bg);padding-bottom:12px;flex-wrap:wrap;gap:10px;">
+                      <div>
+                        <strong style="color:var(--navy);font-size:14px;display:block;">${item.product_name}</strong>
+                        <span style="font-size:13px;color:var(--muted);">&#8377;${Number(item.price || 0).toFixed(2)} &times; ${item.quantity || 1}</span>
+                      </div>
+                      <div style="text-align:right;">
+                        <span style="font-size:15px;font-weight:700;color:var(--navy);display:block;">&#8377;${(Number(item.price || 0) * (item.quantity || 1)).toFixed(2)}</span>
+                        ${currentOrder.status === 'delivered' ? `
+                          <button class="no-print btn btn-outline-green btn-sm" style="font-size:11px;padding:3px 8px;margin-top:4px;" onclick="openReviewModal('${item.product_id}', '${(item.product_name || '').replace(/'/g, "\\'")}')">
+                            <i class="fas fa-star"></i> Review
+                          </button>
+                        ` : ''}
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+
+              <!-- Price Breakdown -->
+              <div style="margin-top:20px;border-top:1.5px solid var(--border);padding-top:14px;">
+                <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;color:var(--text);">
+                  <span>Subtotal</span>
+                  <span>&#8377;${Number(currentOrder.subtotal || 0).toFixed(2)}</span>
+                </div>
+                ${Number(currentOrder.discount || 0) > 0 ? `
+                  <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;color:var(--green);">
+                    <span>Discount</span>
+                    <span>&minus; &#8377;${Number(currentOrder.discount || 0).toFixed(2)}</span>
+                  </div>
+                ` : ''}
+                <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:10px;color:var(--text);">
+                  <span>Delivery Fee</span>
+                  <span>${Number(currentOrder.delivery_fee || 0) === 0 ? 'FREE' : '&#8377;' + Number(currentOrder.delivery_fee || 0).toFixed(2)}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:17px;font-weight:700;color:var(--navy);border-top:1px solid var(--border);padding-top:10px;">
+                  <span>Total Amount</span>
+                  <span>&#8377;${Number(currentOrder.total || 0).toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: Address & Payment Info -->
+            <div style="display:grid;gap:20px;">
+              <div class="card" style="padding:20px;">
+                <h3 style="color:var(--navy);font-size:15px;margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:8px;">
+                  <i class="fas fa-location-dot" style="color:var(--green);margin-right:6px;"></i> Delivery Address
+                </h3>
+                <p style="font-weight:600;font-size:14px;color:var(--navy);margin-bottom:4px;">${addr.full_name || 'Customer'}</p>
+                <p style="font-size:13px;color:var(--text);margin-bottom:6px;line-height:1.4;">${addr.address_line || ''}, ${addr.city || ''}, ${addr.state || ''} - ${addr.pincode || ''}</p>
+                <p style="font-size:13px;color:var(--muted);"><i class="fas fa-phone" style="font-size:11px;"></i> ${addr.phone || ''}</p>
+              </div>
+
+              <div class="card" style="padding:20px;">
+                <h3 style="color:var(--navy);font-size:15px;margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:8px;">
+                  <i class="fas fa-credit-card" style="color:var(--navy);margin-right:6px;"></i> Payment Details
+                </h3>
+                <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;">
+                  <span style="color:var(--muted);">Payment Method:</span>
+                  <strong style="color:var(--navy);">${currentOrder.payment_method === 'cod' ? 'Cash on Delivery' : 'Online Payment (Demo)'}</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;">
+                  <span style="color:var(--muted);">Payment Status:</span>
+                  <span class="badge-status ${currentOrder.payment_status === 'paid' ? 'status-delivered' : 'status-placed'}">${currentOrder.payment_status.toUpperCase()}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function handleCancelOrder() {
+      if (confirm('Are you sure you want to cancel this order? The medicine stock will be returned.')) {
+        var res = await cancelOrder(orderId);
+        if (res.error) {
+          showToast('Could not cancel order: ' + res.error.message, 'error');
+        } else {
+          showToast('Order cancelled successfully', 'success');
+          loadOrderDetail();
+        }
+      }
+    }
+
+    function openReviewModal(productId, productName) {
+      document.getElementById('review-product-id').value = productId;
+      document.getElementById('review-product-name').textContent = productName;
+      document.getElementById('review-modal').style.display = 'flex';
+    }
+
+    function closeReviewModal() {
+      document.getElementById('review-modal').style.display = 'none';
+      document.getElementById('review-comment').value = '';
+    }
+
+    async function submitReview() {
+      var user = await getCurrentUser();
+      var productId = document.getElementById('review-product-id').value;
+      var rating = parseInt(document.getElementById('review-rating').value);
+      var comment = document.getElementById('review-comment').value.trim();
+
+      var res = await db.from('reviews').upsert([{
+        user_id: user.id,
+        product_id: productId,
+        rating: rating,
+        comment: comment
+      }], { onConflict: 'product_id,user_id' });
+
+      if (res.error) {
+        showToast('Error saving review: ' + res.error.message, 'error');
+      } else {
+        showToast('Thank you for reviewing!', 'success');
+        closeReviewModal();
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadOrderDetail);
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checkout – PHARMAcare</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <div id="navbar-placeholder"></div>
+
+  <section class="section">
+    <div class="container">
+      <div class="breadcrumb">
+        <a href="/index.html">Home</a>
+        <span>/</span>
+        <a href="/cart.html">Cart</a>
+        <span>/</span>
+        <span>Checkout</span>
+      </div>
+
+      <div class="section-header" style="margin-bottom: 24px;">
+        <h2>Order Checkout</h2>
+      </div>
+
+      <div id="checkout-container">
+        <p class="loading-text"><i class="fas fa-spinner fa-spin"></i> Loading checkout details...</p>
+      </div>
+    </div>
+  </section>
+
+  <div id="footer-placeholder"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabase.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/products.js"></script>
+  <script src="/js/cart.js"></script>
+  <script src="/js/orders.js"></script>
+  <script src="/js/main.js"></script>
+  <script>
+    var currentUser = null;
+    var cartItems = [];
+    var addresses = [];
+    var prescriptions = [];
+    var selectedAddressId = null;
+    var selectedRxId = null;
+    var requiresRx = false;
+
+    async function initCheckout() {
+      var container = document.getElementById('checkout-container');
+      currentUser = await requireLogin();
+      if (!currentUser) return;
+
+      cartItems = await getCartItems();
+      cartItems.forEach(function(item) {
+        if (!item.products && typeof getFallbackProduct === 'function') {
+          item.products = getFallbackProduct(item.product_id);
+        }
+      });
+      if (!cartItems || cartItems.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state" style="padding:60px 0;">
+            <i class="fas fa-cart-shopping" style="font-size:48px;color:var(--border);margin-bottom:16px;"></i>
+            <h2 style="color:var(--navy);font-size:20px;margin-bottom:8px;">Your cart is empty</h2>
+            <p style="color:var(--muted);font-size:14px;margin-bottom:20px;">Please add items to your cart before proceeding to checkout.</p>
+            <a href="/medicines.html" class="btn btn-navy">Browse Medicines</a>
+          </div>
+        `;
+        return;
+      }
+
+      // Check if any product in cart requires prescription
+      requiresRx = cartItems.some(function(item) {
+        return item.products && item.products.requires_prescription;
+      });
+
+      // Load user addresses
+      var addrRes = await db.from('addresses').select('*').eq('user_id', currentUser.id).order('is_default', { ascending: false });
+      addresses = (addrRes && addrRes.data) ? addrRes.data : [];
+
+      if (addresses.length > 0) {
+        selectedAddressId = addresses[0].id;
+      }
+
+      // Load user prescriptions if Rx required
+      if (requiresRx) {
+        var rxRes = await db.from('prescriptions').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false });
+        prescriptions = (rxRes && rxRes.data) ? rxRes.data : [];
+        if (prescriptions.length > 0) {
+          selectedRxId = prescriptions[0].id;
+        }
+      }
+
+      renderCheckoutView();
+    }
+
+    function renderCheckoutView() {
+      var container = document.getElementById('checkout-container');
+
+      var subtotal = 0;
+      var mrpTotal = 0;
+      cartItems.forEach(function(item) {
+        var p = item.products;
+        if (p) {
+          subtotal += p.price * item.quantity;
+          mrpTotal += p.mrp * item.quantity;
+        }
+      });
+
+      var discount = mrpTotal > subtotal ? mrpTotal - subtotal : 0;
+      var deliveryFee = subtotal >= 499 ? 0 : 40;
+      var total = subtotal + deliveryFee;
+
+      container.innerHTML = `
+        <div style="display:grid;grid-template-columns:1.4fr 0.8fr;gap:32px;align-items:start;">
+          <!-- Left: Checkout Steps -->
+          <div style="display:grid;gap:24px;">
+
+            <!-- Step 1: Delivery Address -->
+            <div class="card" style="padding:24px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                <h3 style="color:var(--navy);font-size:17px;display:flex;align-items:center;gap:10px;">
+                  <span style="background:var(--navy);color:var(--white);width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">1</span>
+                  Delivery Address
+                </h3>
+                <button type="button" class="btn btn-outline-green btn-sm" onclick="toggleCheckoutAddressForm()">
+                  <i class="fas fa-plus"></i> Add New
+                </button>
+              </div>
+
+              <!-- New Address Form (inline) -->
+              <div id="checkout-address-form" style="display:none;background:var(--grey-bg);padding:18px;border-radius:var(--radius-sm);border:1px solid var(--border);margin-bottom:16px;">
+                <h4 style="color:var(--navy);margin-bottom:12px;font-size:14px;">Add Delivery Address</h4>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+                  <input type="text" id="chk-addr-name" placeholder="Full name" style="padding:8px 12px;border:1px solid var(--border);border-radius:4px;font-size:13px;">
+                  <input type="tel" id="chk-addr-phone" placeholder="Phone number" style="padding:8px 12px;border:1px solid var(--border);border-radius:4px;font-size:13px;">
+                </div>
+                <div style="margin-bottom:10px;">
+                  <input type="text" id="chk-addr-line" placeholder="House / Flat no., Street, Landmark" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:4px;font-size:13px;">
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
+                  <input type="text" id="chk-addr-city" placeholder="City" style="padding:8px 12px;border:1px solid var(--border);border-radius:4px;font-size:13px;">
+                  <input type="text" id="chk-addr-state" placeholder="State" style="padding:8px 12px;border:1px solid var(--border);border-radius:4px;font-size:13px;">
+                  <input type="text" id="chk-addr-pin" placeholder="Pincode" style="padding:8px 12px;border:1px solid var(--border);border-radius:4px;font-size:13px;">
+                </div>
+                <div style="display:flex;gap:10px;">
+                  <button type="button" class="btn btn-green btn-sm" onclick="saveCheckoutAddress()">Save & Use Address</button>
+                  <button type="button" class="btn btn-outline-danger btn-sm" onclick="toggleCheckoutAddressForm()">Cancel</button>
+                </div>
+              </div>
+
+              <!-- Address List -->
+              ${addresses.length === 0 ? `
+                <p style="color:var(--muted);font-size:14px;">No addresses saved. Please click "Add New" above to enter your delivery address.</p>
+              ` : `
+                <div style="display:grid;gap:12px;">
+                  ${addresses.map(function(a) {
+                    var isSelected = a.id === selectedAddressId;
+                    return `
+                      <label style="display:flex;gap:12px;padding:14px;border:1.5px solid ${isSelected ? 'var(--green)' : 'var(--border)'};border-radius:var(--radius-sm);cursor:pointer;background:${isSelected ? 'var(--mint)' : 'var(--white)'};align-items:flex-start;">
+                        <input type="radio" name="delivery_address" value="${a.id}" ${isSelected ? 'checked' : ''} onchange="selectAddress('${a.id}')" style="margin-top:4px;">
+                        <div>
+                          <strong style="color:var(--navy);font-size:14px;">${a.full_name}</strong> &bull; <span style="font-size:13px;color:var(--muted);">${a.phone}</span>
+                          <p style="font-size:13px;color:var(--text);margin-top:2px;">${a.address_line}, ${a.city}, ${a.state} - ${a.pincode}</p>
+                        </div>
+                      </label>
+                    `;
+                  }).join('')}
+                </div>
+              `}
+            </div>
+
+            <!-- Step 2: Prescription Upload (if required) -->
+            ${requiresRx ? `
+              <div class="card" style="padding:24px;border-left:4px solid var(--orange);">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+                  <span style="background:var(--orange);color:var(--white);width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">2</span>
+                  <h3 style="color:var(--navy);font-size:17px;">Prescription Required (Rx)</h3>
+                </div>
+                <p style="font-size:13px;color:var(--text);margin-bottom:16px;">
+                  One or more items in your cart require a valid doctor's prescription. Select an uploaded prescription or upload a new one now.
+                </p>
+
+                <!-- Saved Prescriptions Selection -->
+                ${prescriptions.length > 0 ? `
+                  <div style="margin-bottom:16px;">
+                    <label style="font-size:13px;font-weight:600;color:var(--navy);display:block;margin-bottom:6px;">Select Saved Prescription:</label>
+                    <select id="select-saved-rx" onchange="selectedRxId = this.value" style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:13px;">
+                      ${prescriptions.map(function(rx) {
+                        return '<option value="' + rx.id + '">' + (rx.remark || 'Prescription') + ' (' + new Date(rx.created_at).toLocaleDateString() + ') - ' + rx.status.toUpperCase() + '</option>';
+                      }).join('')}
+                    </select>
+                  </div>
+                ` : ''}
+
+                <!-- Inline Prescription Upload -->
+                <div style="background:var(--grey-bg);padding:14px;border-radius:var(--radius-sm);border:1px dashed var(--border);">
+                  <label style="font-size:13px;font-weight:600;color:var(--navy);display:block;margin-bottom:6px;">Or Upload New Prescription:</label>
+                  <input type="file" id="chk-rx-file" accept="image/jpeg,image/png,image/webp,application/pdf" style="margin-bottom:8px;font-size:13px;">
+                  <input type="text" id="chk-rx-remark" placeholder="Doctor's name or note (optional)" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:4px;font-size:13px;margin-bottom:10px;">
+                  <button type="button" class="btn btn-outline-green btn-sm" onclick="uploadCheckoutPrescription()">Upload & Attach</button>
+                  <span id="chk-rx-status" style="font-size:12px;margin-left:10px;color:var(--green);font-weight:600;"></span>
+                </div>
+              </div>
+            ` : ''}
+
+            <!-- Step 3: Payment Method -->
+            <div class="card" style="padding:24px;">
+              <h3 style="color:var(--navy);font-size:17px;display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+                <span style="background:var(--navy);color:var(--white);width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">${requiresRx ? '3' : '2'}</span>
+                Payment Method
+              </h3>
+              <div style="display:grid;gap:12px;">
+                <label style="display:flex;gap:12px;padding:14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;align-items:center;">
+                  <input type="radio" name="payment_method" value="cod" checked>
+                  <div>
+                    <strong style="color:var(--navy);font-size:14px;"><i class="fas fa-hand-holding-dollar" style="color:var(--green);margin-right:6px;"></i> Cash on Delivery (COD)</strong>
+                    <p style="font-size:12px;color:var(--muted);margin-top:2px;">Pay with cash when your medicines are delivered to your door.</p>
+                  </div>
+                </label>
+                <label style="display:flex;gap:12px;padding:14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;align-items:center;">
+                  <input type="radio" name="payment_method" value="online_demo">
+                  <div>
+                    <strong style="color:var(--navy);font-size:14px;"><i class="fas fa-credit-card" style="color:var(--navy);margin-right:6px;"></i> Online Payment (Demo)</strong>
+                    <p style="font-size:12px;color:var(--muted);margin-top:2px;">Simulated instant payment (status marked as Paid immediately).</p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Right: Summary Box -->
+          <div class="card" style="padding:24px;position:sticky;top:90px;">
+            <h3 style="color:var(--navy);font-size:18px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:12px;">Order Summary</h3>
+
+            <div style="max-height:220px;overflow-y:auto;margin-bottom:16px;padding-right:4px;">
+              ${cartItems.map(function(item) {
+                var p = item.products;
+                return `
+                  <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px;">
+                    <span style="color:var(--text);">${p ? p.name : 'Medicine'} &times; ${item.quantity}</span>
+                    <strong style="color:var(--navy);">&#8377;${(p.price * item.quantity).toFixed(2)}</strong>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+
+            <hr style="border:none;border-top:1px solid var(--border);margin-bottom:12px;">
+
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:14px;color:var(--text);">
+              <span>Subtotal</span>
+              <span>&#8377;${subtotal.toFixed(2)}</span>
+            </div>
+
+            ${discount > 0 ? `
+              <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:14px;color:var(--green);">
+                <span>Discount</span>
+                <span>&minus; &#8377;${discount.toFixed(2)}</span>
+              </div>
+            ` : ''}
+
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:14px;color:var(--text);">
+              <span>Delivery Fee</span>
+              <span>${deliveryFee === 0 ? '<strong style="color:var(--green)">FREE</strong>' : '&#8377;40.00'}</span>
+            </div>
+
+            <hr style="border:none;border-top:1.5px solid var(--border);margin:14px 0;">
+
+            <div style="display:flex;justify-content:space-between;margin-bottom:20px;font-size:18px;font-weight:700;color:var(--navy);">
+              <span>Total Payable</span>
+              <span>&#8377;${total.toFixed(2)}</span>
+            </div>
+
+            <button type="button" class="btn btn-green btn-block" id="place-order-btn" onclick="handlePlaceOrder()" style="padding:12px;font-size:16px;">
+              <i class="fas fa-lock"></i> Place Order
+            </button>
+
+            <div style="margin-top:14px;text-align:center;font-size:12px;color:var(--muted);">
+              By placing your order, you agree to PHARMAcare terms of service.
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function toggleCheckoutAddressForm() {
+      var box = document.getElementById('checkout-address-form');
+      box.style.display = box.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function selectAddress(id) {
+      selectedAddressId = id;
+      renderCheckoutView();
+    }
+
+    async function saveCheckoutAddress() {
+      var name = document.getElementById('chk-addr-name').value.trim();
+      var phone = document.getElementById('chk-addr-phone').value.trim();
+      var line = document.getElementById('chk-addr-line').value.trim();
+      var city = document.getElementById('chk-addr-city').value.trim();
+      var state = document.getElementById('chk-addr-state').value.trim();
+      var pin = document.getElementById('chk-addr-pin').value.trim();
+
+      if (!name || !phone || !line || !city || !state || !pin) {
+        showToast('Please fill out all address fields', 'error');
+        return;
+      }
+
+      var res = await db.from('addresses').insert([{
+        user_id: currentUser.id,
+        full_name: name,
+        phone: phone,
+        address_line: line,
+        city: city,
+        state: state,
+        pincode: pin,
+        is_default: addresses.length === 0
+      }]).select().single();
+
+      if (res.error) {
+        showToast('Error saving address: ' + res.error.message, 'error');
+      } else {
+        showToast('Address added', 'success');
+        addresses.unshift(res.data);
+        selectedAddressId = res.data.id;
+        renderCheckoutView();
+      }
+    }
+
+    async function uploadCheckoutPrescription() {
+      var fileInput = document.getElementById('chk-rx-file');
+      var remark = document.getElementById('chk-rx-remark').value.trim();
+      var statusText = document.getElementById('chk-rx-status');
+
+      if (!fileInput.files || fileInput.files.length === 0) {
+        showToast('Please choose a prescription file', 'error');
+        return;
+      }
+
+      var file = fileInput.files[0];
+      var ext = file.name.split('.').pop();
+      var filePath = currentUser.id + '/' + Date.now() + '.' + ext;
+
+      statusText.textContent = 'Uploading...';
+      var uploadRes = await db.storage.from('prescriptions').upload(filePath, file);
+
+      if (uploadRes.error) {
+        statusText.textContent = '';
+        showToast('Upload failed: ' + uploadRes.error.message, 'error');
+        return;
+      }
+
+      var dbRes = await db.from('prescriptions').insert([{
+        user_id: currentUser.id,
+        file_path: filePath,
+        remark: remark || 'Checkout prescription'
+      }]).select().single();
+
+      if (dbRes.error) {
+        statusText.textContent = '';
+        showToast('Error recording prescription: ' + dbRes.error.message, 'error');
+      } else {
+        selectedRxId = dbRes.data.id;
+        prescriptions.unshift(dbRes.data);
+        statusText.textContent = 'Uploaded & Attached!';
+        showToast('Prescription attached to order', 'success');
+      }
+    }
+
+    async function handlePlaceOrder() {
+      if (!selectedAddressId) {
+        showToast('Please select or add a delivery address', 'error');
+        return;
+      }
+
+      if (requiresRx && !selectedRxId) {
+        showToast('Prescription required for this order. Please upload or select one.', 'error');
+        return;
+      }
+
+      var paymentMethodRadio = document.querySelector('input[name="payment_method"]:checked');
+      var paymentMethod = paymentMethodRadio ? paymentMethodRadio.value : 'cod';
+
+      var btn = document.getElementById('place-order-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Placing Order...';
+
+      // 1. Sync cart items into Supabase cart_items table before calling place_order RPC
+      try {
+        for (var i = 0; i < cartItems.length; i++) {
+          var ci = cartItems[i];
+          if (ci && ci.product_id) {
+            await db.from('cart_items').upsert({
+              user_id: currentUser.id,
+              product_id: ci.product_id,
+              quantity: ci.quantity || 1
+            }, { onConflict: 'user_id,product_id' });
+          }
+        }
+      } catch (syncErr) {
+        console.log('Cart sync note:', syncErr);
+      }
+
+      // 2. Attempt atomic database procedure
+      var res = await placeOrder(selectedAddressId, paymentMethod, selectedRxId);
+
+      if (!res.error && res.data) {
+        // Success via database RPC!
+        try {
+          var addr = addresses.find(function(a) { return a.id === selectedAddressId; }) || {};
+          var subtotal = 0;
+          var mrpTotal = 0;
+          cartItems.forEach(function(item) {
+            var p = item.products;
+            if (p) {
+              subtotal += (p.price || 0) * (item.quantity || 1);
+              mrpTotal += (p.mrp || p.price || 0) * (item.quantity || 1);
+            }
+          });
+          var fee = subtotal >= 499 ? 0 : 40;
+          var discount = mrpTotal > subtotal ? mrpTotal - subtotal : 0;
+          var total = subtotal + fee;
+
+          var snapshot = {
+            id: res.data,
+            order_no: Math.floor(100000 + Math.random() * 900000),
+            user_id: currentUser.id,
+            address_snapshot: addr,
+            payment_method: paymentMethod,
+            payment_status: paymentMethod === 'online_demo' ? 'paid' : 'pending',
+            subtotal: subtotal,
+            discount: discount,
+            delivery_fee: fee,
+            total: total,
+            status: 'placed',
+            created_at: new Date().toISOString(),
+            order_items: cartItems.map(function(item) {
+              var p = item.products || {};
+              return {
+                id: 'item-' + Date.now(),
+                product_id: item.product_id,
+                product_name: p.name || 'Medicine',
+                quantity: item.quantity || 1,
+                price: p.price || 0,
+                item_status: 'placed'
+              };
+            })
+          };
+          if (typeof saveLocalOrder === 'function') {
+            saveLocalOrder(currentUser.id, snapshot);
+          }
+        } catch(snapErr) {
+          console.warn('Snapshot error:', snapErr);
+        }
+
+        if (typeof saveLocalCart === 'function') {
+          saveLocalCart(currentUser.id, []);
+        }
+        await updateCartCount();
+        window.location.href = '/order-success.html?order_id=' + res.data;
+        return;
+      }
+
+      // 3. Fallback: Direct order creation
+      console.log('RPC place_order notice:', res.error ? res.error.message : 'Unknown');
+      try {
+        var addr = addresses.find(function(a) { return a.id === selectedAddressId; }) || {};
+        var subtotal = 0;
+        var mrpTotal = 0;
+        cartItems.forEach(function(item) {
+          var p = item.products;
+          if (p) {
+            subtotal += (p.price || 0) * (item.quantity || 1);
+            mrpTotal += (p.mrp || p.price || 0) * (item.quantity || 1);
+          }
+        });
+        var fee = subtotal >= 499 ? 0 : 40;
+        var discount = mrpTotal > subtotal ? mrpTotal - subtotal : 0;
+        var total = subtotal + fee;
+
+        var orderInsert = await db.from('orders').insert([{
+          user_id: currentUser.id,
+          address_snapshot: addr,
+          prescription_id: selectedRxId,
+          payment_method: paymentMethod,
+          payment_status: paymentMethod === 'online_demo' ? 'paid' : 'pending',
+          subtotal: subtotal,
+          discount: discount,
+          delivery_fee: fee,
+          total: total,
+          status: 'placed'
+        }]).select().single();
+
+        if (orderInsert && orderInsert.data) {
+          var newOrderId = orderInsert.data.id;
+          var newOrderNo = orderInsert.data.order_no || Math.floor(100000 + Math.random() * 900000);
+
+          // Insert order items
+          var itemsToInsert = cartItems.map(function(item) {
+            var p = item.products || {};
+            return {
+              order_id: newOrderId,
+              product_id: item.product_id,
+              seller_id: p.seller_id || currentUser.id,
+              product_name: p.name || 'Medicine',
+              pack_info: p.pack_info || '',
+              quantity: item.quantity || 1,
+              price: p.price || 0,
+              item_status: 'placed'
+            };
+          });
+
+          try {
+            await db.from('order_items').insert(itemsToInsert);
+          } catch(itemErr) {
+            console.log('Notice inserting order items:', itemErr);
+          }
+
+          var fallbackSnapshot = {
+            id: newOrderId,
+            order_no: newOrderNo,
+            user_id: currentUser.id,
+            address_snapshot: addr,
+            payment_method: paymentMethod,
+            payment_status: paymentMethod === 'online_demo' ? 'paid' : 'pending',
+            subtotal: subtotal,
+            discount: discount,
+            delivery_fee: fee,
+            total: total,
+            status: 'placed',
+            created_at: new Date().toISOString(),
+            order_items: itemsToInsert
+          };
+          if (typeof saveLocalOrder === 'function') {
+            saveLocalOrder(currentUser.id, fallbackSnapshot);
+          }
+
+          // Clear database and local cart
+          try {
+            await db.from('cart_items').delete().eq('user_id', currentUser.id);
+          } catch(e) {}
+          if (typeof saveLocalCart === 'function') {
+            saveLocalCart(currentUser.id, []);
+          }
+          await updateCartCount();
+          window.location.href = '/order-success.html?order_id=' + newOrderId;
+          return;
+        }
+      } catch (e) {
+        console.log('Direct order creation notice:', e);
+      }
+
+      var msg = (res.error && res.error.message) ? res.error.message : 'Could not place order';
+      if (msg.toLowerCase().includes('cart is empty') || msg.toLowerCase().includes('violates foreign key')) {
+        showToast('Database setup needed: Please run sql/seed_products_now.sql in Supabase SQL Editor.', 'error');
+      } else {
+        showToast(msg, 'error');
+      }
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-lock"></i> Place Order';
+    }
+
+    document.addEventListener('DOMContentLoaded', initCheckout);
+  </script>
+
+</body>
+</html>

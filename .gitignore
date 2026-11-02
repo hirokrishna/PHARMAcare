@@ -1,0 +1,23 @@
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# Editor and IDE folders
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Node modules & logs
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Internal Planning Specs & Viva Guides (Keep private)
+[0-9]_*.md
+TEAM_ROLES_AND_VIVA_GUIDE.md
+

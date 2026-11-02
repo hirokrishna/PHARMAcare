@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Users – PHARMAcare Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+
+  <div id="navbar-placeholder"></div>
+
+  <div class="dashboard-page">
+    <aside class="sidebar admin-sidebar">
+      <div class="sidebar-brand">
+        <p>Admin Control</p>
+        <h3>PHARMAcare</h3>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="/admin/dashboard.html"><i class="fas fa-gauge"></i> Dashboard</a>
+        <a href="/admin/sellers.html"><i class="fas fa-store"></i> Sellers</a>
+        <a href="/admin/users.html" class="active"><i class="fas fa-users"></i> Users</a>
+        <a href="/admin/products.html"><i class="fas fa-boxes-stacked"></i> Products</a>
+        <a href="/admin/orders.html"><i class="fas fa-bag-shopping"></i> Orders</a>
+        <a href="/admin/categories.html"><i class="fas fa-list"></i> Categories</a>
+        <a href="/admin/banners.html"><i class="fas fa-images"></i> Banners</a>
+        <a href="/admin/messages.html"><i class="fas fa-envelope"></i> Messages</a>
+      </nav>
+      <div class="sidebar-footer">
+        <a href="/index.html"><i class="fas fa-arrow-left"></i> Back to Site</a>
+        <a href="#" onclick="logout()"><i class="fas fa-right-from-bracket"></i> Logout</a>
+      </div>
+    </aside>
+
+    <main class="dash-content">
+      <div class="dash-header">
+        <h1>User Management</h1>
+        <p>View registered accounts, manage user roles, and block suspicious accounts.</p>
+      </div>
+
+      <div class="dash-card">
+        <div class="dash-card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+          <input type="text" id="user-search" placeholder="Search user by name..." oninput="handleUserSearch()" style="padding:6px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:13px;width:240px;outline:none;">
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-outline-green btn-sm active" onclick="filterRole('all', this)">All</button>
+            <button class="btn btn-outline-green btn-sm" onclick="filterRole('customer', this)">Customers</button>
+            <button class="btn btn-outline-green btn-sm" onclick="filterRole('seller', this)">Sellers</button>
+            <button class="btn btn-outline-green btn-sm" onclick="filterRole('admin', this)">Admins</button>
+          </div>
+        </div>
+        <div class="dash-card-body" style="padding:0;">
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>User Name</th>
+                  <th>Phone Number</th>
+                  <th>Role</th>
+                  <th>Registered On</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="users-tbody">
+                <tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted);">Loading users...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="footer-placeholder"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabase.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/products.js"></script>
+  <script src="/js/cart.js"></script>
+  <script src="/js/orders.js"></script>
+  <script src="/js/admin.js"></script>
+  <script src="/js/main.js"></script>
+  <script>
+    var allUsers = [];
+    var roleFilter = 'all';
+    var searchQuery = '';
+
+    async function loadUsers() {
+      var access = await checkAdminAccess();
+      if (!access) return;
+
+      allUsers = await getAllUsers();
+      renderUsersTable();
+    }
+
+    function renderUsersTable() {
+      var tbody = document.getElementById('users-tbody');
+      var list = allUsers;
+
+      if (roleFilter !== 'all') {
+        list = list.filter(function(u) { return u.role === roleFilter; });
+      }
+
+      if (searchQuery) {
+        list = list.filter(function(u) {
+          return (u.full_name || '').toLowerCase().includes(searchQuery.toLowerCase());
+        });
+      }
+
+      if (list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:36px;color:var(--muted);">No users found.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = list.map(function(u) {
+        var dt = u.created_at ? new Date(u.created_at).toLocaleDateString() : '-';
+        var roleBadgeClass = u.role === 'admin' ? 'status-confirmed' : (u.role === 'seller' ? 'status-packed' : 'status-placed');
+
+        return `
+          <tr>
+            <td>
+              <strong style="color:var(--navy);font-size:14px;display:block;">${u.full_name}</strong>
+              <small style="color:var(--muted);">ID: ${u.id.substring(0, 8)}</small>
+            </td>
+            <td>${u.phone || 'No phone'}</td>
+            <td><span class="badge-status ${roleBadgeClass}">${u.role.toUpperCase()}</span></td>
+            <td>${dt}</td>
+            <td>
+              <span class="badge-status ${u.is_blocked ? 'status-cancelled' : 'status-delivered'}">
+                ${u.is_blocked ? 'BLOCKED' : 'ACTIVE'}
+              </span>
+            </td>
+            <td>
+              <div style="display:flex;gap:6px;">
+                <button onclick="handleBlockToggle('${u.id}', ${!u.is_blocked})" class="btn ${u.is_blocked ? 'btn-green' : 'btn-outline-danger'} btn-sm" style="font-size:11px;padding:3px 8px;">
+                  ${u.is_blocked ? 'Unblock' : 'Block'}
+                </button>
+                ${u.role !== 'admin' ? `
+                  <button onclick="makeAdmin('${u.id}')" class="btn btn-outline-green btn-sm" style="font-size:11px;padding:3px 8px;" title="Promote to Admin">
+                    Make Admin
+                  </button>
+                ` : ''}
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function filterRole(role, btn) {
+      roleFilter = role;
+      document.querySelectorAll('.dash-card-header .btn').forEach(function(b) {
+        b.classList.remove('active');
+        b.style.background = 'none';
+        b.style.color = 'var(--green)';
+      });
+      btn.classList.add('active');
+      btn.style.background = 'var(--green)';
+      btn.style.color = 'var(--white)';
+      renderUsersTable();
+    }
+
+    function handleUserSearch() {
+      searchQuery = document.getElementById('user-search').value.trim();
+      renderUsersTable();
+    }
+
+    async function handleBlockToggle(userId, blockStatus) {
+      var ok = await toggleUserBlock(userId, blockStatus);
+      if (ok) {
+        showToast(blockStatus ? 'User blocked' : 'User unblocked', 'success');
+        loadUsers();
+      } else {
+        showToast('Error updating user block status', 'error');
+      }
+    }
+
+    async function makeAdmin(userId) {
+      if (confirm('Promote this user to Admin? They will have full administrative rights.')) {
+        var res = await db.from('profiles').update({ role: 'admin' }).eq('id', userId);
+        if (!res.error) {
+          showToast('User promoted to Admin', 'success');
+          loadUsers();
+        } else {
+          showToast('Error: ' + res.error.message, 'error');
+        }
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadUsers);
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Profile – PHARMAcare</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <div id="navbar-placeholder"></div>
+
+  <section class="section">
+    <div class="container">
+      <div class="breadcrumb">
+        <a href="/index.html">Home</a>
+        <span>/</span>
+        <span>My Account</span>
+      </div>
+
+      <div class="section-header" style="margin-bottom: 24px;">
+        <h2>My Account</h2>
+      </div>
+
+      <div style="display:grid;grid-template-columns:260px 1fr;gap:32px;align-items:start;">
+        <!-- Left Sidebar Tabs -->
+        <div class="card" style="padding:16px;">
+          <ul style="list-style:none;padding:0;margin:0;">
+            <li style="margin-bottom:4px;">
+              <button class="account-nav-btn active" onclick="showTab('profile', this)" style="width:100%;text-align:left;padding:12px 16px;border:none;background:var(--mint);color:var(--green);font-weight:600;border-radius:var(--radius-sm);cursor:pointer;font-family:inherit;font-size:14px;display:flex;align-items:center;gap:10px;">
+                <i class="fas fa-user"></i> Personal Profile
+              </button>
+            </li>
+            <li style="margin-bottom:4px;">
+              <button class="account-nav-btn" onclick="showTab('addresses', this)" style="width:100%;text-align:left;padding:12px 16px;border:none;background:none;color:var(--text);font-weight:500;border-radius:var(--radius-sm);cursor:pointer;font-family:inherit;font-size:14px;display:flex;align-items:center;gap:10px;">
+                <i class="fas fa-location-dot"></i> Delivery Addresses
+              </button>
+            </li>
+            <li style="margin-bottom:4px;">
+              <button class="account-nav-btn" onclick="showTab('prescriptions', this)" style="width:100%;text-align:left;padding:12px 16px;border:none;background:none;color:var(--text);font-weight:500;border-radius:var(--radius-sm);cursor:pointer;font-family:inherit;font-size:14px;display:flex;align-items:center;gap:10px;">
+                <i class="fas fa-file-prescription"></i> Prescriptions
+              </button>
+            </li>
+            <li style="margin-bottom:4px;">
+              <a href="/my-orders.html" style="width:100%;text-align:left;padding:12px 16px;color:var(--text);font-weight:500;border-radius:var(--radius-sm);font-family:inherit;font-size:14px;display:flex;align-items:center;gap:10px;text-decoration:none;">
+                <i class="fas fa-box-open"></i> My Orders
+              </a>
+            </li>
+            <li>
+              <a href="/wishlist.html" style="width:100%;text-align:left;padding:12px 16px;color:var(--text);font-weight:500;border-radius:var(--radius-sm);font-family:inherit;font-size:14px;display:flex;align-items:center;gap:10px;text-decoration:none;">
+                <i class="fas fa-heart"></i> Saved Wishlist
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Right Content Area -->
+        <div id="tab-content-area">
+          <!-- Tab 1: Profile -->
+          <div id="tab-profile" class="tab-panel card" style="padding:28px;">
+            <h3 style="color:var(--navy);font-size:18px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:12px;">Personal Details</h3>
+            <form id="profile-form" novalidate>
+              <div class="form-group">
+                <label for="prof-email">Email Address (Read-only)</label>
+                <input type="email" id="prof-email" readonly style="background:var(--grey-bg);cursor:not-allowed;">
+              </div>
+              <div class="form-group">
+                <label for="prof-name">Full Name</label>
+                <input type="text" id="prof-name" required>
+              </div>
+              <div class="form-group">
+                <label for="prof-phone">Phone Number</label>
+                <input type="tel" id="prof-phone" placeholder="10-digit mobile number">
+              </div>
+              <div class="form-group">
+                <label>Account Role</label>
+                <span id="prof-role-badge" class="badge-status status-placed" style="display:inline-block;margin-top:4px;">customer</span>
+              </div>
+              <button type="submit" class="btn btn-navy" id="save-profile-btn" style="margin-top:12px;">
+                Save Changes
+              </button>
+            </form>
+          </div>
+
+          <!-- Tab 2: Addresses -->
+          <div id="tab-addresses" class="tab-panel card" style="display:none;padding:28px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:12px;">
+              <h3 style="color:var(--navy);font-size:18px;">Delivery Addresses</h3>
+              <button class="btn btn-outline-green btn-sm" onclick="toggleAddressForm()">
+                <i class="fas fa-plus"></i> Add New Address
+              </button>
+            </div>
+
+            <!-- New Address Form (hidden by default) -->
+            <div id="address-form-box" style="display:none;background:var(--grey-bg);padding:20px;border-radius:var(--radius-sm);border:1px solid var(--border);margin-bottom:24px;">
+              <h4 style="color:var(--navy);margin-bottom:14px;font-size:15px;">Add New Delivery Address</h4>
+              <form id="add-address-form" novalidate>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                  <div class="form-group" style="margin:0;">
+                    <label for="addr-name">Receiver Name</label>
+                    <input type="text" id="addr-name" placeholder="Full name" required>
+                  </div>
+                  <div class="form-group" style="margin:0;">
+                    <label for="addr-phone">Phone Number</label>
+                    <input type="tel" id="addr-phone" placeholder="10-digit phone" required>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="addr-line">House / Street / Area</label>
+                  <input type="text" id="addr-line" placeholder="House no., Building, Street" required>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;">
+                  <div class="form-group" style="margin:0;">
+                    <label for="addr-city">City</label>
+                    <input type="text" id="addr-city" placeholder="City" required>
+                  </div>
+                  <div class="form-group" style="margin:0;">
+                    <label for="addr-state">State</label>
+                    <input type="text" id="addr-state" placeholder="State" required>
+                  </div>
+                  <div class="form-group" style="margin:0;">
+                    <label for="addr-pincode">Pincode</label>
+                    <input type="text" id="addr-pincode" placeholder="6-digit pincode" required>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+                  <input type="checkbox" id="addr-default">
+                  <label for="addr-default" style="font-size:13px;font-weight:400;margin:0;cursor:pointer;">Set as default delivery address</label>
+                </div>
+                <div style="display:flex;gap:10px;">
+                  <button type="submit" class="btn btn-green btn-sm">Save Address</button>
+                  <button type="button" class="btn btn-outline-danger btn-sm" onclick="toggleAddressForm()">Cancel</button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Addresses List -->
+            <div id="addresses-list">
+              <p class="loading-text">Loading addresses...</p>
+            </div>
+          </div>
+
+          <!-- Tab 3: Prescriptions -->
+          <div id="tab-prescriptions" class="tab-panel card" style="display:none;padding:28px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:12px;">
+              <h3 style="color:var(--navy);font-size:18px;">My Prescriptions</h3>
+              <button class="btn btn-outline-green btn-sm" onclick="toggleRxForm()">
+                <i class="fas fa-upload"></i> Upload Prescription
+              </button>
+            </div>
+
+            <!-- Upload Prescription Form -->
+            <div id="rx-upload-box" style="display:none;background:var(--grey-bg);padding:20px;border-radius:var(--radius-sm);border:1px solid var(--border);margin-bottom:24px;">
+              <h4 style="color:var(--navy);margin-bottom:12px;font-size:15px;">Upload Doctor's Prescription</h4>
+              <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">Upload JPG, PNG or PDF (max 5 MB). Our pharmacists will review it.</p>
+              <form id="rx-upload-form">
+                <div class="form-group">
+                  <input type="file" id="rx-file" accept="image/jpeg,image/png,image/webp,application/pdf" required style="background:var(--white);padding:8px;">
+                </div>
+                <div class="form-group">
+                  <label for="rx-remark">Optional Note / Doctor's Name</label>
+                  <input type="text" id="rx-remark" placeholder="e.g. Dr. Verma prescription for fever">
+                </div>
+                <div style="display:flex;gap:10px;">
+                  <button type="submit" class="btn btn-green btn-sm" id="rx-upload-btn">Upload Now</button>
+                  <button type="button" class="btn btn-outline-danger btn-sm" onclick="toggleRxForm()">Cancel</button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Prescriptions List -->
+            <div id="prescriptions-list">
+              <p class="loading-text">Loading prescriptions...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div id="footer-placeholder"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabase.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/products.js"></script>
+  <script src="/js/cart.js"></script>
+  <script src="/js/orders.js"></script>
+  <script src="/js/main.js"></script>
+  <script>
+    var currentUser = null;
+    var currentProfile = null;
+
+    function showTab(tabId, btn) {
+      document.querySelectorAll('.tab-panel').forEach(function(el) { el.style.display = 'none'; });
+      document.querySelectorAll('.account-nav-btn').forEach(function(el) {
+        el.style.background = 'none';
+        el.style.color = 'var(--text)';
+        el.style.fontWeight = '500';
+      });
+
+      document.getElementById('tab-' + tabId).style.display = 'block';
+      if (btn) {
+        btn.style.background = 'var(--mint)';
+        btn.style.color = 'var(--green)';
+        btn.style.fontWeight = '600';
+      }
+
+      if (tabId === 'addresses') loadAddresses();
+      if (tabId === 'prescriptions') loadPrescriptions();
+    }
+
+    function toggleAddressForm() {
+      var box = document.getElementById('address-form-box');
+      box.style.display = box.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function toggleRxForm() {
+      var box = document.getElementById('rx-upload-box');
+      box.style.display = box.style.display === 'none' ? 'block' : 'none';
+    }
+
+    async function initProfile() {
+      currentUser = await requireLogin();
+      if (!currentUser) return;
+
+      currentProfile = await getProfile(currentUser.id);
+      document.getElementById('prof-email').value = currentUser.email;
+      if (currentProfile) {
+        document.getElementById('prof-name').value = currentProfile.full_name || '';
+        document.getElementById('prof-phone').value = currentProfile.phone || '';
+        var badge = document.getElementById('prof-role-badge');
+        badge.textContent = currentProfile.role;
+        badge.className = 'badge-status ' + (currentProfile.role === 'admin' ? 'status-confirmed' : (currentProfile.role === 'seller' ? 'status-packed' : 'status-placed'));
+      }
+
+      // check url query parameters for tab navigation
+      var urlParams = new URLSearchParams(window.location.search);
+      var tab = urlParams.get('tab');
+      if (tab === 'prescriptions') {
+        var rxBtn = document.querySelectorAll('.account-nav-btn')[2];
+        showTab('prescriptions', rxBtn);
+        if (urlParams.get('upload') === 'true') {
+          var box = document.getElementById('rx-upload-box');
+          if (box) box.style.display = 'block';
+        }
+      } else if (tab === 'addresses') {
+        var addrBtn = document.querySelectorAll('.account-nav-btn')[1];
+        showTab('addresses', addrBtn);
+      }
+    }
+
+    // save profile
+    document.getElementById('profile-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      var name = document.getElementById('prof-name').value.trim();
+      var phone = document.getElementById('prof-phone').value.trim();
+      var btn = document.getElementById('save-profile-btn');
+
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+
+      var res = await db.from('profiles').update({ full_name: name, phone: phone }).eq('id', currentUser.id);
+      btn.disabled = false;
+      btn.textContent = 'Save Changes';
+
+      if (res.error) {
+        showToast('Error updating profile: ' + res.error.message, 'error');
+      } else {
+        showToast('Profile updated successfully', 'success');
+        updateUserArea();
+      }
+    });
+
+    // load addresses
+    async function loadAddresses() {
+      var list = document.getElementById('addresses-list');
+      var res = await db.from('addresses').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false });
+
+      if (res.error || !res.data || res.data.length === 0) {
+        list.innerHTML = '<p style="color:var(--muted);font-size:14px;">No addresses saved yet. Click "Add New Address" above.</p>';
+        return;
+      }
+
+      var html = '<div style="display:grid;gap:14px;">';
+      res.data.forEach(function(a) {
+        html += `
+          <div style="border:1.5px solid ${a.is_default ? 'var(--green)' : 'var(--border)'};border-radius:var(--radius-sm);padding:16px;background:${a.is_default ? 'var(--mint)' : 'var(--white)'};display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                <strong style="color:var(--navy);font-size:15px;">${a.full_name}</strong>
+                ${a.is_default ? '<span style="background:var(--green);color:var(--white);font-size:11px;padding:2px 6px;border-radius:4px;font-weight:600;">Default</span>' : ''}
+              </div>
+              <p style="font-size:13px;color:var(--text);margin-bottom:4px;">${a.address_line}, ${a.city}, ${a.state} - <strong>${a.pincode}</strong></p>
+              <p style="font-size:13px;color:var(--muted);"><i class="fas fa-phone" style="font-size:11px;"></i> ${a.phone}</p>
+            </div>
+            <div style="display:flex;gap:8px;">
+              ${!a.is_default ? `<button onclick="setDefaultAddress('${a.id}')" class="btn btn-outline-green btn-sm" style="font-size:12px;">Set Default</button>` : ''}
+              <button onclick="deleteAddress('${a.id}')" class="btn btn-outline-danger btn-sm" style="font-size:12px;"><i class="fas fa-trash-can"></i></button>
+            </div>
+          </div>
+        `;
+      });
+      html += '</div>';
+      list.innerHTML = html;
+    }
+
+    // add address
+    document.getElementById('add-address-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      var name = document.getElementById('addr-name').value.trim();
+      var phone = document.getElementById('addr-phone').value.trim();
+      var line = document.getElementById('addr-line').value.trim();
+      var city = document.getElementById('addr-city').value.trim();
+      var state = document.getElementById('addr-state').value.trim();
+      var pincode = document.getElementById('addr-pincode').value.trim();
+      var isDefault = document.getElementById('addr-default').checked;
+
+      if (!name || !phone || !line || !city || !state || !pincode) {
+        showToast('Please fill out all address fields', 'error');
+        return;
+      }
+
+      var res = await db.from('addresses').insert([{
+        user_id: currentUser.id,
+        full_name: name,
+        phone: phone,
+        address_line: line,
+        city: city,
+        state: state,
+        pincode: pincode,
+        is_default: isDefault
+      }]);
+
+      if (res.error) {
+        showToast('Failed to save address: ' + res.error.message, 'error');
+      } else {
+        showToast('Address saved', 'success');
+        document.getElementById('add-address-form').reset();
+        toggleAddressForm();
+        loadAddresses();
+      }
+    });
+
+    async function setDefaultAddress(addrId) {
+      // unset other defaults first
+      await db.from('addresses').update({ is_default: false }).eq('user_id', currentUser.id);
+      await db.from('addresses').update({ is_default: true }).eq('id', addrId);
+      showToast('Default address updated', 'success');
+      loadAddresses();
+    }
+
+    async function deleteAddress(addrId) {
+      if (confirm('Delete this address?')) {
+        await db.from('addresses').delete().eq('id', addrId);
+        showToast('Address deleted', 'success');
+        loadAddresses();
+      }
+    }
+
+    // load prescriptions
+    async function loadPrescriptions() {
+      var list = document.getElementById('prescriptions-list');
+      var res = await db.from('prescriptions').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false });
+
+      if (res.error || !res.data || res.data.length === 0) {
+        list.innerHTML = '<p style="color:var(--muted);font-size:14px;">No prescriptions uploaded yet.</p>';
+        return;
+      }
+
+      var html = '<div style="display:grid;gap:14px;">';
+      res.data.forEach(function(rx) {
+        var statusColor = rx.status === 'approved' ? 'status-delivered' : (rx.status === 'rejected' ? 'status-cancelled' : 'status-packed');
+        html += `
+          <div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px;background:var(--white);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+            <div>
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+                <strong style="color:var(--navy);font-size:14px;"><i class="fas fa-file-medical" style="color:var(--green);margin-right:4px;"></i> Prescription</strong>
+                <span class="badge-status ${statusColor}">${rx.status.toUpperCase()}</span>
+              </div>
+              <p style="font-size:13px;color:var(--muted);">${rx.remark || 'Uploaded by user'}</p>
+              <p style="font-size:11px;color:var(--muted);margin-top:2px;">Uploaded on: ${new Date(rx.created_at).toLocaleDateString()}</p>
+            </div>
+            <div>
+              <button onclick="viewRxFile('${rx.file_path}')" class="btn btn-outline-green btn-sm" style="font-size:12px;">
+                <i class="fas fa-eye"></i> View File
+              </button>
+            </div>
+          </div>
+        `;
+      });
+      html += '</div>';
+      list.innerHTML = html;
+    }
+
+    // upload prescription
+    document.getElementById('rx-upload-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      var fileInput = document.getElementById('rx-file');
+      var remark = document.getElementById('rx-remark').value.trim();
+      var btn = document.getElementById('rx-upload-btn');
+
+      if (!fileInput.files || fileInput.files.length === 0) {
+        showToast('Please select a file to upload', 'error');
+        return;
+      }
+
+      var file = fileInput.files[0];
+      if (file.size > 5 * 1024 * 1024) {
+        showToast('File size must be under 5 MB', 'error');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Uploading file...';
+
+      var ext = file.name.split('.').pop();
+      var filePath = currentUser.id + '/' + Date.now() + '.' + ext;
+
+      var uploadRes = await db.storage.from('prescriptions').upload(filePath, file);
+
+      if (uploadRes.error) {
+        showToast('Upload error: ' + uploadRes.error.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Upload Now';
+        return;
+      }
+
+      var dbRes = await db.from('prescriptions').insert([{
+        user_id: currentUser.id,
+        file_path: filePath,
+        remark: remark || 'Uploaded prescription'
+      }]);
+
+      btn.disabled = false;
+      btn.textContent = 'Upload Now';
+
+      if (dbRes.error) {
+        showToast('Failed to save prescription: ' + dbRes.error.message, 'error');
+      } else {
+        showToast('Prescription uploaded successfully', 'success');
+        document.getElementById('rx-upload-form').reset();
+        toggleRxForm();
+        loadPrescriptions();
+      }
+    });
+
+    async function viewRxFile(path) {
+      var res = await db.storage.from('prescriptions').createSignedUrl(path, 60);
+      if (res.data && res.data.signedUrl) {
+        window.open(res.data.signedUrl, '_blank');
+      } else {
+        showToast('Unable to open prescription file', 'error');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', initProfile);
+  </script>
+
+</body>
+</html>

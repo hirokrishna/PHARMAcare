@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard – PHARMAcare Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+
+  <div id="navbar-placeholder"></div>
+
+  <div class="dashboard-page">
+    <aside class="sidebar admin-sidebar">
+      <div class="sidebar-brand">
+        <p>Admin Control</p>
+        <h3>PHARMAcare</h3>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="/admin/dashboard.html" class="active"><i class="fas fa-gauge"></i> Dashboard</a>
+        <a href="/admin/sellers.html"><i class="fas fa-store"></i> Sellers</a>
+        <a href="/admin/users.html"><i class="fas fa-users"></i> Users</a>
+        <a href="/admin/products.html"><i class="fas fa-boxes-stacked"></i> Products</a>
+        <a href="/admin/orders.html"><i class="fas fa-bag-shopping"></i> Orders</a>
+        <a href="/admin/categories.html"><i class="fas fa-list"></i> Categories</a>
+        <a href="/admin/banners.html"><i class="fas fa-images"></i> Banners</a>
+        <a href="/admin/messages.html"><i class="fas fa-envelope"></i> Messages</a>
+      </nav>
+      <div class="sidebar-footer">
+        <a href="/index.html"><i class="fas fa-arrow-left"></i> Back to Site</a>
+        <a href="#" onclick="logout()"><i class="fas fa-right-from-bracket"></i> Logout</a>
+      </div>
+    </aside>
+
+    <main class="dash-content">
+      <div class="dash-header">
+        <h1>Admin Overview</h1>
+        <p>Real-time metrics, seller verifications, and order fulfillment tracking.</p>
+      </div>
+
+      <!-- Quick Metrics Grid -->
+      <div class="stat-grid" style="margin-bottom:28px;">
+        <div class="stat-card">
+          <div class="stat-icon icon-blue"><i class="fas fa-users"></i></div>
+          <div class="stat-info">
+            <h3 id="adm-users-count">0</h3>
+            <p>Total Users</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon icon-orange"><i class="fas fa-store"></i></div>
+          <div class="stat-info">
+            <h3 id="adm-sellers-count">0</h3>
+            <p>Pending Sellers</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon icon-green"><i class="fas fa-pills"></i></div>
+          <div class="stat-info">
+            <h3 id="adm-products-count">0</h3>
+            <p>Total Products</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon icon-red"><i class="fas fa-cart-shopping"></i></div>
+          <div class="stat-info">
+            <h3 id="adm-orders-count">0</h3>
+            <p>Total Orders</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pending Seller Approvals -->
+      <div class="dash-card" style="margin-bottom:28px;">
+        <div class="dash-card-header" style="display:flex;justify-content:space-between;align-items:center;">
+          <h3><i class="fas fa-user-clock" style="color:var(--orange);margin-right:8px;"></i> Pending Seller Applications</h3>
+          <a href="/admin/sellers.html" class="btn btn-outline-green btn-sm">View All Sellers</a>
+        </div>
+        <div class="dash-card-body" style="padding:0;">
+          <div class="table-responsive">
+            <table class="table" id="pending-sellers-table">
+              <thead>
+                <tr>
+                  <th>Shop Name</th>
+                  <th>Applicant Name</th>
+                  <th>Licence Number</th>
+                  <th>Applied On</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="pending-sellers-tbody">
+                <tr><td colspan="5" style="text-align:center;padding:20px;color:var(--muted);">Checking pending applications...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Orders Platform-wide -->
+      <div class="dash-card">
+        <div class="dash-card-header" style="display:flex;justify-content:space-between;align-items:center;">
+          <h3><i class="fas fa-receipt" style="color:var(--navy);margin-right:8px;"></i> Recent Orders</h3>
+          <a href="/admin/orders.html" class="btn btn-outline-green btn-sm">Manage All Orders</a>
+        </div>
+        <div class="dash-card-body" style="padding:0;">
+          <div class="table-responsive">
+            <table class="table" id="admin-recent-orders-table">
+              <thead>
+                <tr>
+                  <th>Order #</th>
+                  <th>Customer</th>
+                  <th>Payment</th>
+                  <th>Total</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody id="admin-recent-orders-tbody">
+                <tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted);">Loading orders...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <div id="footer-placeholder"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabase.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/products.js"></script>
+  <script src="/js/cart.js"></script>
+  <script src="/js/orders.js"></script>
+  <script src="/js/admin.js"></script>
+  <script src="/js/main.js"></script>
+  <script>
+    async function loadAdminDashboard() {
+      var access = await checkAdminAccess();
+      if (!access) return;
+
+      // counts
+      var uRes = await db.from('profiles').select('id', { count: 'exact' });
+      document.getElementById('adm-users-count').textContent = uRes.count || 0;
+
+      var pRes = await db.from('products').select('id', { count: 'exact' });
+      document.getElementById('adm-products-count').textContent = pRes.count || 0;
+
+      var oRes = await db.from('orders').select('id', { count: 'exact' });
+      document.getElementById('adm-orders-count').textContent = oRes.count || 0;
+
+      // pending sellers
+      var pending = await getPendingSellers();
+      document.getElementById('adm-sellers-count').textContent = pending.length;
+
+      var sellersTbody = document.getElementById('pending-sellers-tbody');
+      if (pending.length === 0) {
+        sellersTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--green);"><i class="fas fa-check"></i> No pending seller approval requests.</td></tr>';
+      } else {
+        sellersTbody.innerHTML = pending.map(function(s) {
+          var prof = s.profiles || {};
+          var dt = s.created_at ? new Date(s.created_at).toLocaleDateString() : '-';
+          return `
+            <tr>
+              <td><strong>${s.shop_name}</strong></td>
+              <td>${prof.full_name || 'Seller'}</td>
+              <td><code>${s.licence_number}</code></td>
+              <td>${dt}</td>
+              <td>
+                <div style="display:flex;gap:6px;">
+                  <button onclick="handleSellerStatus('${s.id}', 'approved')" class="btn btn-green btn-sm" style="font-size:11px;padding:3px 8px;">Approve</button>
+                  <button onclick="handleSellerStatus('${s.id}', 'rejected')" class="btn btn-outline-danger btn-sm" style="font-size:11px;padding:3px 8px;">Reject</button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      // recent orders
+      var ordersRes = await db.from('orders')
+        .select('*, profiles(full_name)')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      var ordersTbody = document.getElementById('admin-recent-orders-tbody');
+      var ords = (ordersRes && ordersRes.data) ? ordersRes.data : [];
+      if (ords.length === 0) {
+        ordersTbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted);">No orders placed yet.</td></tr>';
+      } else {
+        ordersTbody.innerHTML = ords.map(function(o) {
+          var cName = (o.profiles && o.profiles.full_name) ? o.profiles.full_name : 'Customer';
+          var dt = new Date(o.created_at).toLocaleDateString();
+          return `
+            <tr>
+              <td><a href="/admin/orders.html" style="color:var(--navy);font-weight:700;">#${o.order_no}</a></td>
+              <td>${cName}</td>
+              <td><span style="font-size:12px;text-transform:uppercase;">${o.payment_method}</span></td>
+              <td>&#8377;${o.total.toFixed(2)}</td>
+              <td><span class="badge-status status-${o.status}">${o.status.toUpperCase()}</span></td>
+              <td>${dt}</td>
+            </tr>
+          `;
+        }).join('');
+      }
+    }
+
+    async function handleSellerStatus(sellerId, newStatus) {
+      var success = await updateSellerStatus(sellerId, newStatus);
+      if (success) {
+        showToast('Seller marked as ' + newStatus, 'success');
+        loadAdminDashboard();
+      } else {
+        showToast('Error updating seller status', 'error');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadAdminDashboard);
+  </script>
+
+</body>
+</html>

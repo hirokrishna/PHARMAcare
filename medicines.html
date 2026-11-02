@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Medicines – PHARMAcare</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+
+  <div id="navbar-placeholder"></div>
+
+  <section class="section">
+    <div class="container">
+      <div class="breadcrumb">
+        <a href="/index.html">Home</a>
+        <span>/</span>
+        <span>Medicines</span>
+      </div>
+      <div class="section-header">
+        <h2>All Medicines</h2>
+      </div>
+
+      <!-- Filter bar placeholder -->
+      <div style="display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;">
+        <select id="cat-filter" onchange="doSearch()" class="form-group"
+          style="padding:8px 14px;border:1.5px solid var(--border);border-radius:6px;font-family:Poppins,sans-serif;font-size:14px;">
+          <option value="">All Categories</option>
+        </select>
+        <input id="search-input" type="text" placeholder="Search medicines..."
+          style="flex:1;padding:8px 14px;border:1.5px solid var(--border);border-radius:6px;font-family:Poppins,sans-serif;font-size:14px;outline:none;">
+        <button class="btn btn-navy" onclick="doSearch()"><i class="fas fa-search"></i> Search</button>
+      </div>
+
+      <!-- Products grid -->
+      <div class="product-grid" id="products-grid">
+        <p class="loading-text">Loading products...</p>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination" id="pagination"></div>
+    </div>
+  </section>
+
+  <div id="footer-placeholder"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabase.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/products.js"></script>
+  <script src="/js/cart.js"></script>
+  <script src="/js/orders.js"></script>
+  <script src="/js/main.js"></script>
+  <script>
+    var currentPage = 0;
+    var currentCat = null;
+    var currentSearch = '';
+
+    // read ?cat= from URL
+    var urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('cat')) {
+      currentCat = parseInt(urlParams.get('cat'));
+    }
+
+    async function loadCategories() {
+      var cats = await getCategories();
+      var sel = document.getElementById('cat-filter');
+      cats.forEach(function (c) {
+        var opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.name;
+        if (c.id === currentCat) opt.selected = true;
+        sel.appendChild(opt);
+      });
+    }
+
+    async function loadProducts() {
+      var grid = document.getElementById('products-grid');
+      grid.innerHTML = '<p class="loading-text">Loading...</p>';
+      var products = await getProducts(currentPage, currentCat, currentSearch);
+
+      if (!products.length) {
+        grid.innerHTML = '<p class="loading-text">No products found.</p>';
+        return;
+      }
+
+      var html = '';
+      products.forEach(function (p) {
+        var discount = p.mrp > p.price ? Math.round(((p.mrp - p.price) / p.mrp) * 100) + '% off' : '';
+        var rxBadge = p.requires_prescription ? '<span class="badge-rx">Rx</span>' : '';
+        var stockBadge = p.stock === 0 ? '<span class="badge-out">Out of stock</span>' : (p.stock <= 10 ? '<span class="badge-low-stock">Low stock</span>' : '');
+        var imgTag = p.image_url
+          ? '<img src="' + p.image_url + '" alt="' + p.name + '" class="product-card-img">'
+          : '<div class="product-card-img" style="display:flex;align-items:center;justify-content:center;"><i class="fas fa-pills" style="font-size:40px;color:var(--border)"></i></div>';
+        html += `
+          <div class="product-card">
+            <a href="/product.html?id=${p.id}">${imgTag}</a>
+            <div class="product-card-body">
+              <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:4px">${rxBadge}${stockBadge}</div>
+              <a href="/product.html?id=${p.id}" class="product-card-name">${p.name}</a>
+              <p class="product-card-pack">${p.pack_info || ''}</p>
+              <div class="product-card-price">
+                <span class="price-current">&#8377;${p.price.toFixed(2)}</span>
+                ${p.mrp > p.price ? '<span class="price-mrp">&#8377;' + p.mrp.toFixed(2) + '</span>' : ''}
+                ${discount ? '<span class="badge-discount">' + discount + '</span>' : ''}
+              </div>
+            </div>
+            <div class="product-card-footer">
+              <button class="btn btn-green btn-block btn-sm" onclick="addToCart('${p.id}',1)" ${p.stock === 0 ? 'disabled' : ''}>
+                <i class="fas fa-cart-plus"></i> ${p.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
+              </button>
+            </div>
+          </div>`;
+      });
+      grid.innerHTML = html;
+    }
+
+    function doSearch() {
+      currentCat = parseInt(document.getElementById('cat-filter').value) || null;
+      currentSearch = document.getElementById('search-input').value.trim();
+      currentPage = 0;
+      loadProducts();
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      loadCategories();
+      loadProducts();
+      document.getElementById('search-input').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') doSearch();
+      });
+    });
+  </script>
+
+</body>
+
+</html>

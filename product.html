@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Product Details – PHARMAcare</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <div id="navbar-placeholder"></div>
+
+  <section class="section">
+    <div class="container">
+      <div class="breadcrumb">
+        <a href="/index.html">Home</a>
+        <span>/</span>
+        <a href="/medicines.html">Medicines</a>
+        <span>/</span>
+        <span id="product-name-bc">Product Details</span>
+      </div>
+
+      <div id="product-detail">
+        <p class="loading-text"><i class="fas fa-spinner fa-spin"></i> Loading product details...</p>
+      </div>
+    </div>
+  </section>
+
+  <div id="footer-placeholder"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabase.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/products.js"></script>
+  <script src="/js/cart.js"></script>
+  <script src="/js/orders.js"></script>
+  <script src="/js/main.js"></script>
+  <script>
+    var currentProduct = null;
+    var selectedQty = 1;
+    var inWishlist = false;
+
+    async function loadProduct() {
+      var params = new URLSearchParams(window.location.search);
+      var id = params.get('id');
+      var container = document.getElementById('product-detail');
+
+      if (!id) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-pills"></i><h2>No product selected</h2><p>Please browse our medicines catalog.</p><a href="/medicines.html" class="btn btn-navy" style="margin-top:16px;">View Medicines</a></div>';
+        return;
+      }
+
+      var p = await getProduct(id);
+      if (!p) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-triangle-exclamation"></i><h2>Product not found</h2><p>This product may have been removed or is temporarily unavailable.</p><a href="/medicines.html" class="btn btn-navy" style="margin-top:16px;">Back to Medicines</a></div>';
+        return;
+      }
+
+      currentProduct = p;
+      document.title = p.name + ' – PHARMAcare';
+      document.getElementById('product-name-bc').textContent = p.name;
+
+      // check if in wishlist
+      var user = await getCurrentUser();
+      if (user) {
+        var wlRes = await db.from('wishlist').select('id').eq('user_id', user.id).eq('product_id', p.id).maybeSingle();
+        inWishlist = !!(wlRes && wlRes.data);
+      }
+
+      // fetch reviews
+      var revRes = await db.from('reviews')
+        .select('*, profiles(full_name)')
+        .eq('product_id', p.id)
+        .order('created_at', { ascending: false });
+      var reviews = (revRes && revRes.data) ? revRes.data : [];
+
+      var avgRating = 0;
+      if (reviews.length > 0) {
+        var sum = 0;
+        reviews.forEach(function(r) { sum += r.rating; });
+        avgRating = (sum / reviews.length).toFixed(1);
+      }
+
+      var discount = p.mrp > p.price ? Math.round(((p.mrp - p.price)/p.mrp)*100) : 0;
+      var imgTag = p.image_url
+        ? '<img src="'+p.image_url+'" alt="'+p.name+'" style="max-height:280px;max-width:100%;object-fit:contain;margin:0 auto;display:block;">'
+        : '<div style="height:240px;display:flex;align-items:center;justify-content:center;background:var(--grey-bg);border-radius:var(--radius);"><i class="fas fa-pills" style="font-size:64px;color:var(--border)"></i></div>';
+
+      var sellerName = (p.profiles && p.profiles.full_name) ? p.profiles.full_name : 'Verified Pharmacy';
+
+      container.innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start;margin-bottom:40px;">
+          <!-- Left: Image -->
+          <div style="background:var(--white);border-radius:var(--radius);padding:32px;border:1px solid var(--border);text-align:center;">
+            ${imgTag}
+          </div>
+
+          <!-- Right: Info -->
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;">
+              <span style="font-size:13px;color:var(--green);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">${p.categories ? p.categories.name : 'Medicine'}</span>
+              <button id="wishlist-btn" onclick="toggleWishlist()" class="btn ${inWishlist ? 'btn-navy' : 'btn-outline-green'} btn-sm" title="Save to Wishlist">
+                <i class="${inWishlist ? 'fas fa-heart' : 'far fa-heart'}"></i> ${inWishlist ? 'Saved' : 'Wishlist'}
+              </button>
+            </div>
+
+            <h1 style="font-size:24px;font-weight:700;color:var(--navy);margin-bottom:6px;">${p.name}</h1>
+            <p style="color:var(--muted);font-size:14px;margin-bottom:12px;">${p.pack_info || ''}</p>
+
+            <!-- Rating badge if reviews exist -->
+            ${reviews.length > 0 ? `
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+                <span style="background:var(--green);color:var(--white);padding:2px 8px;border-radius:4px;font-size:12px;font-weight:600;">
+                  ★ ${avgRating}
+                </span>
+                <span style="font-size:13px;color:var(--muted);">${reviews.length} customer review(s)</span>
+              </div>
+            ` : ''}
+
+            <!-- Badges -->
+            <div style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap;">
+              ${p.requires_prescription ? '<span class="badge-rx"><i class="fas fa-file-prescription"></i> Prescription Required</span>' : ''}
+              ${p.stock === 0 ? '<span class="badge-out">Out of Stock</span>' : (p.stock <= 10 ? '<span class="badge-low-stock">Only ' + p.stock + ' left in stock</span>' : '<span style="color:var(--green);font-size:13px;font-weight:500;"><i class="fas fa-check"></i> In Stock</span>')}
+              ${discount ? '<span class="badge-discount">' + discount + '% OFF</span>' : ''}
+            </div>
+
+            <!-- Price -->
+            <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:20px;padding:12px 16px;background:var(--grey-bg);border-radius:var(--radius-sm);">
+              <span style="font-size:28px;font-weight:700;color:var(--navy);">&#8377;${p.price.toFixed(2)}</span>
+              ${p.mrp > p.price ? '<span style="font-size:16px;color:var(--muted);text-decoration:line-through;">&#8377;' + p.mrp.toFixed(2) + '</span>' : ''}
+              ${discount ? '<span style="color:var(--green);font-size:13px;font-weight:600;">You Save &#8377;' + (p.mrp - p.price).toFixed(2) + '</span>' : ''}
+            </div>
+
+            <!-- Quantity Selector & Actions -->
+            ${p.stock > 0 ? `
+              <div style="display:flex;align-items:center;gap:16px;margin-bottom:24px;flex-wrap:wrap;">
+                <div style="display:flex;align-items:center;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:var(--white);">
+                  <button type="button" onclick="changeQty(-1)" style="padding:8px 14px;border:none;background:none;font-size:16px;cursor:pointer;color:var(--navy);font-weight:700;">&minus;</button>
+                  <span id="qty-val" style="padding:8px 12px;font-weight:600;min-width:32px;text-align:center;">1</span>
+                  <button type="button" onclick="changeQty(1)" style="padding:8px 14px;border:none;background:none;font-size:16px;cursor:pointer;color:var(--navy);font-weight:700;">&#43;</button>
+                </div>
+                <button class="btn btn-green" onclick="handleAddToCart()">
+                  <i class="fas fa-cart-plus"></i> Add to Cart
+                </button>
+                <button class="btn btn-navy" onclick="handleBuyNow()">
+                  <i class="fas fa-bolt"></i> Buy Now
+                </button>
+              </div>
+            ` : `
+              <div style="padding:12px 16px;background:#fde8e8;color:var(--red);border-radius:var(--radius-sm);margin-bottom:24px;font-size:14px;font-weight:500;">
+                <i class="fas fa-circle-exclamation"></i> Currently Out of Stock. This medicine will be available soon.
+              </div>
+            `}
+
+            <!-- Meta details -->
+            <div style="border-top:1px solid var(--border);padding-top:16px;font-size:13px;color:var(--text);display:grid;gap:8px;">
+              ${p.manufacturer ? '<div><strong>Manufacturer:</strong> <span style="color:var(--muted);">' + p.manufacturer + '</span></div>' : ''}
+              ${p.expiry_date ? '<div><strong>Expiry Date:</strong> <span style="color:var(--muted);">' + p.expiry_date + '</span></div>' : ''}
+              <div><strong>Sold by:</strong> <span style="color:var(--muted);">' + sellerName + '</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Information Tabs -->
+        <div class="card" style="padding:28px;margin-bottom:32px;">
+          <div style="display:flex;gap:12px;border-bottom:1.5px solid var(--border);margin-bottom:20px;flex-wrap:wrap;">
+            <button class="tab-btn active" onclick="switchTab('desc', this)" style="padding:10px 18px;border:none;background:none;font-weight:600;cursor:pointer;color:var(--navy);border-bottom:2.5px solid var(--green);font-family:inherit;font-size:14px;">Description</button>
+            <button class="tab-btn" onclick="switchTab('comp', this)" style="padding:10px 18px;border:none;background:none;font-weight:500;cursor:pointer;color:var(--muted);font-family:inherit;font-size:14px;">Composition & Uses</button>
+            <button class="tab-btn" onclick="switchTab('side', this)" style="padding:10px 18px;border:none;background:none;font-weight:500;cursor:pointer;color:var(--muted);font-family:inherit;font-size:14px;">Side Effects</button>
+            <button class="tab-btn" onclick="switchTab('rev', this)" style="padding:10px 18px;border:none;background:none;font-weight:500;cursor:pointer;color:var(--muted);font-family:inherit;font-size:14px;">Reviews (${reviews.length})</button>
+          </div>
+
+          <div id="tab-desc" class="tab-content" style="display:block;line-height:1.7;font-size:14px;color:var(--text);">
+            ${p.description || '<p style="color:var(--muted)">No detailed description provided for this product.</p>'}
+          </div>
+
+          <div id="tab-comp" class="tab-content" style="display:none;line-height:1.7;font-size:14px;color:var(--text);">
+            <h4 style="color:var(--navy);font-size:15px;margin-bottom:6px;">Composition</h4>
+            <p style="color:var(--muted);margin-bottom:16px;">${p.composition || 'Information not specified'}</p>
+            <h4 style="color:var(--navy);font-size:15px;margin-bottom:6px;">Key Uses</h4>
+            <p style="color:var(--muted);">${p.uses || 'Used as directed by a healthcare physician or pharmacist.'}</p>
+          </div>
+
+          <div id="tab-side" class="tab-content" style="display:none;line-height:1.7;font-size:14px;color:var(--text);">
+            <h4 style="color:var(--navy);font-size:15px;margin-bottom:6px;">Possible Side Effects</h4>
+            <p style="color:var(--muted);">${p.side_effects || 'Most side effects are minor and resolve as your body adapts to the medicine. Consult your doctor if symptoms persist.'}</p>
+            <div style="background:var(--mint);padding:14px;border-radius:var(--radius-sm);margin-top:14px;font-size:13px;color:var(--text);">
+              <strong>Disclaimer:</strong> Please take medicines only under the guidance or prescription of a registered medical practitioner.
+            </div>
+          </div>
+
+          <div id="tab-rev" class="tab-content" style="display:none;">
+            ${reviews.length === 0 ? '<p style="color:var(--muted);font-size:14px;">No reviews yet. Reviews can be posted by verified customers after delivery of their order.</p>' : ''}
+            <div style="display:grid;gap:14px;">
+              ${reviews.map(function(r) {
+                var reviewer = (r.profiles && r.profiles.full_name) ? r.profiles.full_name : 'Customer';
+                return `
+                  <div style="padding:14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--grey-bg);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                      <strong style="color:var(--navy);font-size:14px;">${reviewer}</strong>
+                      <span style="color:var(--green);font-size:13px;">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</span>
+                    </div>
+                    <p style="font-size:13px;color:var(--text);">${r.comment || 'Good product.'}</p>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function switchTab(tabName, btn) {
+      document.querySelectorAll('.tab-content').forEach(function(el) { el.style.display = 'none'; });
+      document.querySelectorAll('.tab-btn').forEach(function(el) {
+        el.style.color = 'var(--muted)';
+        el.style.borderBottom = 'none';
+        el.style.fontWeight = '500';
+      });
+      document.getElementById('tab-' + tabName).style.display = 'block';
+      btn.style.color = 'var(--navy)';
+      btn.style.borderBottom = '2.5px solid var(--green)';
+      btn.style.fontWeight = '600';
+    }
+
+    function changeQty(delta) {
+      if (!currentProduct) return;
+      var newQty = selectedQty + delta;
+      if (newQty >= 1 && newQty <= Math.min(10, currentProduct.stock)) {
+        selectedQty = newQty;
+        document.getElementById('qty-val').textContent = selectedQty;
+      }
+    }
+
+    async function handleAddToCart() {
+      if (!currentProduct) return;
+      await addToCart(currentProduct.id, selectedQty);
+    }
+
+    async function handleBuyNow() {
+      if (!currentProduct) return;
+      var user = await getCurrentUser();
+      if (!user) {
+        localStorage.setItem('pending_product_id', currentProduct.id);
+        localStorage.setItem('redirect_after_login', '/cart.html');
+        window.location.href = '/login.html';
+        return;
+      }
+      await addToCart(currentProduct.id, selectedQty);
+      window.location.href = '/cart.html';
+    }
+
+    async function toggleWishlist() {
+      if (!currentProduct) return;
+      var user = await getCurrentUser();
+      if (!user) {
+        window.location.href = '/login.html';
+        return;
+      }
+
+      var btn = document.getElementById('wishlist-btn');
+
+      if (inWishlist) {
+        var delRes = await db.from('wishlist').delete().eq('user_id', user.id).eq('product_id', currentProduct.id);
+        if (!delRes.error) {
+          inWishlist = false;
+          btn.className = 'btn btn-outline-green btn-sm';
+          btn.innerHTML = '<i class="far fa-heart"></i> Wishlist';
+          showToast('Removed from wishlist', 'success');
+        }
+      } else {
+        var addRes = await db.from('wishlist').insert([{ user_id: user.id, product_id: currentProduct.id }]);
+        if (!addRes.error) {
+          inWishlist = true;
+          btn.className = 'btn btn-navy btn-sm';
+          btn.innerHTML = '<i class="fas fa-heart"></i> Saved';
+          showToast('Added to wishlist', 'success');
+        }
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadProduct);
+  </script>
+
+</body>
+</html>

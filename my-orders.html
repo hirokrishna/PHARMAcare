@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Orders – PHARMAcare</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <div id="navbar-placeholder"></div>
+
+  <section class="section">
+    <div class="container">
+      <div class="breadcrumb">
+        <a href="/index.html">Home</a>
+        <span>/</span>
+        <a href="/profile.html">My Account</a>
+        <span>/</span>
+        <span>My Orders</span>
+      </div>
+
+      <div class="section-header" style="margin-bottom: 24px;">
+        <h2>My Orders</h2>
+      </div>
+
+      <div id="orders-container">
+        <p class="loading-text"><i class="fas fa-spinner fa-spin"></i> Loading your orders...</p>
+      </div>
+    </div>
+  </section>
+
+  <div id="footer-placeholder"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabase.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/products.js"></script>
+  <script src="/js/cart.js"></script>
+  <script src="/js/orders.js"></script>
+  <script src="/js/main.js"></script>
+  <script>
+    async function loadOrders() {
+      var container = document.getElementById('orders-container');
+      var user = await requireLogin();
+      if (!user) return;
+
+      var orders = await getMyOrders();
+
+      if (!orders || orders.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state" style="padding:60px 0;">
+            <i class="fas fa-box-open" style="font-size:48px;color:var(--border);margin-bottom:16px;"></i>
+            <h2 style="color:var(--navy);font-size:22px;margin-bottom:8px;">No orders found</h2>
+            <p style="color:var(--muted);font-size:14px;margin-bottom:24px;">You have not placed any orders yet.</p>
+            <a href="/medicines.html" class="btn btn-navy">Start Shopping</a>
+          </div>
+        `;
+        return;
+      }
+
+      var html = '<div style="display:grid;gap:20px;">';
+      orders.forEach(function(o) {
+        var status = o.status || 'placed';
+        var statusClass = 'status-' + status;
+        var dateFormatted = o.created_at ? new Date(o.created_at).toLocaleDateString('en-IN', {
+          day: 'numeric', month: 'short', year: 'numeric'
+        }) : 'Recent';
+
+        var itemsPreview = '';
+        if (o.order_items && o.order_items.length > 0) {
+          itemsPreview = o.order_items.map(function(item) {
+            return (item.product_name || 'Medicine') + ' &times; ' + (item.quantity || 1);
+          }).join(', ');
+        }
+
+        var orderNoDisplay = o.order_no ? '#' + o.order_no : '#' + (o.id ? o.id.toString().substring(0, 8) : 'ORD');
+        var totalAmount = Number(o.total || 0).toFixed(2);
+        var paymentStatus = o.payment_status ? o.payment_status.toUpperCase() : 'PENDING';
+
+        html += `
+          <div class="card" style="padding:24px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+              <div>
+                <span style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;">Order Placed</span>
+                <strong style="display:block;color:var(--navy);font-size:15px;">${orderNoDisplay} &bull; ${dateFormatted}</strong>
+              </div>
+              <div>
+                <span class="badge-status ${statusClass}" style="font-size:13px;padding:4px 12px;">${status.toUpperCase()}</span>
+              </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center;flex-wrap:wrap;">
+              <div>
+                <p style="font-size:14px;color:var(--text);margin-bottom:6px;">
+                  <strong>Items:</strong> <span style="color:var(--muted);">${itemsPreview || 'Order details'}</span>
+                </p>
+                <p style="font-size:13px;color:var(--muted);">
+                  <strong>Payment:</strong> ${o.payment_method === 'cod' ? 'Cash on Delivery' : 'Online Demo'} (${paymentStatus})
+                </p>
+              </div>
+
+              <div style="text-align:right;">
+                <span style="font-size:12px;color:var(--muted);display:block;">Total Amount</span>
+                <strong style="font-size:20px;color:var(--navy);display:block;margin-bottom:10px;">&#8377;${totalAmount}</strong>
+                <a href="/order-detail.html?id=${o.id}" class="btn btn-outline-green btn-sm">
+                  View Order Details &rarr;
+                </a>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      html += '</div>';
+      container.innerHTML = html;
+    }
+
+    document.addEventListener('DOMContentLoaded', loadOrders);
+  </script>
+
+</body>
+</html>
